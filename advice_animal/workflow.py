@@ -1,3 +1,4 @@
+import subprocess
 import os
 import shutil
 import tempfile
@@ -26,6 +27,7 @@ class BaseWorkflow:
             subprocess.check_output(["git", "clone", self.env.path, d])
             cur_cwd = os.getcwd()
             try:
+                os.chdir(d)
                 subprocess.check_output(["git", "checkout", "-b", branch_name])
                 yield Path(d)
                 subprocess.check_output(["git", "add", "-A"])
