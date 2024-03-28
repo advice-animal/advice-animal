@@ -1,6 +1,6 @@
-import subprocess
 import os
 import shutil
+import subprocess
 import tempfile
 from contextlib import contextmanager
 from pathlib import Path
@@ -16,25 +16,49 @@ from .api import Env
 class BaseWorkflow:
     def __init__(self, env: Env) -> None:
         self.env = env
+        self.current_branch = (
+            (env.path / ".git" / "HEAD").read_text().strip().split("/")[-1]
+        )
+        # TODO consider how to handle dirty working copy
 
     @contextmanager
     def work_in_branch(
-        self, branch_name: str, commit_message: str
+        self,
+        branch_name: str,
+        commit_message: str,
+        inplace: bool = False,
+        commit: bool = True,
     ) -> Generator[Path, None, None]:
-        with tempfile.TemporaryDirectory() as d:
-            # TODO consider --single-branch --no-tags -b main, but that doesn't
-            # appear to be able to check out arbitrary revs or origin/main.
-            subprocess.check_output(["git", "clone", self.env.path, d])
+        # TODO: A future option to do commit-per-fix in current working copy
+        # might be nice, right now inplace ignores the commit var.
+        if inplace:
             cur_cwd = os.getcwd()
             try:
-                os.chdir(d)
-                subprocess.check_output(["git", "checkout", "-b", branch_name])
-                yield Path(d)
-                subprocess.check_output(["git", "add", "-A"])
-                subprocess.check_output(["git", "commit", "-m", commit_message])
-                subprocess.check_output(["git", "push", "-f", "origin", branch_name])
+                os.chdir(self.env.path)
+                yield self.env.path
             finally:
                 os.chdir(cur_cwd)
+        else:
+            with tempfile.TemporaryDirectory() as d:
+                # TODO consider --single-branch --no-tags -b main, but that doesn't
+                # appear to be able to check out arbitrary revs or origin/main.
+                subprocess.check_output(["git", "clone", self.env.path, d])
+                cur_cwd = os.getcwd()
+                try:
+                    os.chdir(d)
+                    subprocess.check_output(["git", "checkout", "-b", branch_name])
+                    yield Path(d)
+                    subprocess.check_output(["git", "add", "-A"])
+                    if commit:
+                        subprocess.check_output(["git", "commit", "-m", commit_message])
+                        subprocess.check_output(
+                            ["git", "push", "-f", "origin", branch_name]
+                        )
+                    else:
+                        subprocess.check_call(["git", "status"])
+                        subprocess.check_call(["git", "diff"])
+                finally:
+                    os.chdir(cur_cwd)
 
 
 class TestWorkflow(BaseWorkflow):

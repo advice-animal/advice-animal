@@ -1,8 +1,13 @@
 from __future__ import annotations
 
+import logging
+from enum import IntEnum
 from pathlib import Path
-
 from typing import Optional
+
+from vmodule import VLOG_1, VLOG_2
+
+LOG = logging.getLogger(__name__)
 
 
 def infer_top_level_dir(path: Path) -> Optional[Path]:
@@ -42,14 +47,34 @@ class Env:
         Basicalize a memoize decorator but one whose cache lifetime is tied to
         the Env, and doesn't require all functions to be known in advance.
         """
+        LOG.log(VLOG_2, "get %s", func.__qualname__)
         return func(*args, **kwargs)  # TODO
 
 
-class Check:
+class FixConfidence(IntEnum):
+    UNSET = 0
+    RED = 10
+    YELLOW = 20
+    GREEN = 30
+
+
+class BaseCheck:
+    """
+    This is the main class that you subclass to propose your own fixes.
+
+    Depending on what the Workflow does, this might run apply in the user-provided dir or a tempdir.
+    """
+
+    confidence: FixConfidence = FixConfidence.UNSET
+
+    # Setting either of these requires extra user intent to run, within the confidence band.
+    manual: bool = False
+    preview: bool = False
+
     def __init__(self, env: Env) -> None:
         self.env = env
 
-    def pred(self) -> bool:
+    def check(self) -> bool:
         """
         Return true if this check wants to run.
         """
@@ -58,7 +83,8 @@ class Check:
     def apply(self, workdir: Path) -> None:
         """
         Apply this check's fix to the `workdir`, optionally using information
-        from `self.env`.  Any added, modified, or deleted files will
-        automatically be included in the branch.
+        from `self.env`.  Assume that if a commit is being made by the Workflow
+        that any added, modified, or deleted files will automatically be
+        included (you should not generally use scm commands here).
         """
-        pass
+        raise NotImplementedError

@@ -3,4 +3,4 @@ try:
 except ImportError:
     __version__ = "dev"
 
-from .api import Check
+from .api import BaseCheck, FixConfidence
