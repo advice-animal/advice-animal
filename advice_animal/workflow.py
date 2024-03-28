@@ -1,3 +1,4 @@
+import logging
 import os
 import shutil
 import subprocess
@@ -10,15 +11,27 @@ import moreorless.click
 
 from .api import Env
 
+LOG = logging.getLogger(__name__)
+
+
+def run(cmd):
+    LOG.info("Run %s in %s", cmd, os.getcwd())
+    proc = subprocess.run(cmd, encoding="utf-8", capture_output=True)
+    LOG.debug("Ran %s -> %s", cmd, proc.returncode)
+    LOG.debug("Stdout: %s", proc.stdout)
+    return proc.stdout
+
 
 # TODO support parallel workflow, which will work extremely well for git on
 # fixers that we don't know if they generate changes until after they run.
 class BaseWorkflow:
     def __init__(self, env: Env) -> None:
         self.env = env
-        self.current_branch = (
-            (env.path / ".git" / "HEAD").read_text().strip().split("/")[-1]
-        )
+        git_head_path = env.path / ".git" / "HEAD"
+        if git_head_path.exists():
+            self.current_branch = git_head_path.read_text().strip().split("/")[-1]
+        else:
+            self.current_branch = None
         # TODO consider how to handle dirty working copy
 
     @contextmanager
@@ -42,21 +55,28 @@ class BaseWorkflow:
             with tempfile.TemporaryDirectory() as d:
                 # TODO consider --single-branch --no-tags -b main, but that doesn't
                 # appear to be able to check out arbitrary revs or origin/main.
-                subprocess.check_output(["git", "clone", self.env.path, d])
+                run(["git", "clone", self.env.path, d])
                 cur_cwd = os.getcwd()
                 try:
                     os.chdir(d)
-                    subprocess.check_output(["git", "checkout", "-b", branch_name])
+                    run(
+                        [
+                            "git",
+                            "checkout",
+                            "-b",
+                            branch_name,
+                            f"origin/{self.current_branch}",
+                        ]
+                    )
                     yield Path(d)
-                    subprocess.check_output(["git", "add", "-A"])
+                    run(["git", "add", "-A"])
                     if commit:
-                        subprocess.check_output(["git", "commit", "-m", commit_message])
-                        subprocess.check_output(
-                            ["git", "push", "-f", "origin", branch_name]
-                        )
+                        run(["git", "commit", "-m", commit_message])
+                        run(["git", "push", "-f", "origin", branch_name])
+                        print("pushed", branch_name)
                     else:
-                        subprocess.check_call(["git", "status"])
-                        subprocess.check_call(["git", "diff"])
+                        run(["git", "status"])
+                        print(run(["git", "diff", "--cached"]))
                 finally:
                     os.chdir(cur_cwd)
 
@@ -74,7 +94,8 @@ class TestWorkflow(BaseWorkflow):
 def files(a: Path) -> Generator[Path, None, None]:
     for root, dirs, files in os.walk(a):
         for f in files:
-            yield Path(root, f).relative_to(a)
+            if not f.startswith("."):
+                yield Path(root, f).relative_to(a)
 
 
 def compare(a: Path, b: Path) -> bool:
