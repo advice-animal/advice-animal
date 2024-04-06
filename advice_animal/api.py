@@ -5,7 +5,7 @@ from enum import IntEnum
 from pathlib import Path
 from typing import Optional
 
-from vmodule import VLOG_1, VLOG_2
+from vmodule import VLOG_2
 
 LOG = logging.getLogger(__name__)
 

@@ -2,12 +2,10 @@ from __future__ import annotations
 
 import logging
 import os
-import shutil
-import tempfile
 from collections import defaultdict
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Generator, Optional
+from typing import Optional
 
 import click
 from vmodule import VLOG_1, vmodule_init

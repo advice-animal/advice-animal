@@ -2,9 +2,9 @@ import logging
 import sys
 from pathlib import Path
 
-from vmodule import VLOG_1, VLOG_2
+from vmodule import VLOG_1
 
-from .api import BaseCheck, Env, FixConfidence
+from .api import FixConfidence
 
 LOG = logging.getLogger(__name__)
 
