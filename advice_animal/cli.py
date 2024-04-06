@@ -109,7 +109,7 @@ def test(ctx, show_exception):
     rv = 0
     advice_path = ctx.obj.advice_path.resolve()
 
-    for n, cls in Runner(Env(Path()), advice_path).iter_check_classes(
+    for n, cls in Runner(advice_path).iter_check_classes(
         preview_filter=True,
     ):
         if (a_dir := advice_path.joinpath(n, "a")).exists():
@@ -178,7 +178,7 @@ def diff(ctx, target):
     env = Env(Path(target))
     wf = BaseWorkflow(env)
 
-    for n, cls in Runner(env, Path(ctx.obj.advice_path)).iter_check_classes(
+    for n, cls in Runner(Path(ctx.obj.advice_path)).iter_check_classes(
         confidence_filter=ctx.obj.confidence_filter,
         preview_filter=ctx.obj.preview_filter,
     ):
@@ -197,7 +197,7 @@ def apply(ctx, inplace: bool, target: str):
     env = Env(Path(target))
     wf = BaseWorkflow(env)
 
-    for n, cls in Runner(env, Path(ctx.obj.advice_path)).iter_check_classes(
+    for n, cls in Runner(Path(ctx.obj.advice_path)).iter_check_classes(
         confidence_filter=ctx.obj.confidence_filter,
         preview_filter=ctx.obj.preview_filter,
     ):
