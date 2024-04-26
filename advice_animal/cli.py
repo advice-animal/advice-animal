@@ -8,6 +8,8 @@ from pathlib import Path
 from typing import Optional
 
 import click
+from pathspec import PathSpec
+from pathspec.patterns.gitwildmatch import GitWildMatchPattern
 from vmodule import VLOG_1, vmodule_init
 
 from .api import Env, FixConfidence
@@ -145,17 +147,64 @@ def test(ctx, show_exception):
     return rv
 
 
+def project_root(path: Path) -> Path:
+    """
+    Find the project root, looking upward from the given path.
+
+    Looks through all parent paths until either the root is reached, or a directory
+    is found that contains any of :attr:`ROOT_MARKERS`.
+    """
+    root_markers: list[Path] = [Path(".git"), Path(".hg")]
+    real_path = path.resolve()
+
+    parents = list(real_path.parents)
+    if real_path.is_dir():
+        parents.insert(0, real_path)
+
+    for parent in parents:
+        if any((parent / marker).exists() for marker in root_markers):
+            return parent
+
+    return parent
+
+
+def gitignore(path: Path) -> PathSpec:
+    """
+    Generate a `PathSpec` object for a .gitignore file in the given directory.
+
+    If none is found, an empty PathSpec is returned. If the path is not a directory,
+    `ValueError` is raised.
+    """
+    if not path.is_dir():
+        raise ValueError(f"path {path} not a directory")
+
+    gi_path = path / ".gitignore"
+
+    if gi_path.is_file():
+        lines = gi_path.read_text().splitlines()
+    else:
+        lines = []
+
+    return PathSpec.from_lines(GitWildMatchPattern, lines)
+
+
 def find_python_projects(path: Path) -> list[Path]:
     """
     Find every project in a mono-repo (or not).
     """
+    # A mono-repo may contain multiple projects
+    # The project root is defined as a directory containing a setup.py or
+    # pyproject.toml
+    project_indicators = {"setup.py", "pyproject.toml"}
     projects = []
+    root = project_root(path)
+    ignore = gitignore(root) + PathSpec.from_lines(GitWildMatchPattern, ["__pycache__", "*.egg-info", "*.dist-info"])
 
     for dirpath, dirnames, filenames in os.walk(path):
-        # A mono-repo may contain multiple projects
-        # The project root is defined as a directory containing a setup.py or
-        # pyproject.toml
-        if "setup.py" in filenames or "pyproject.toml" in filenames:
+        if ignore.match_file(dirpath):
+            continue
+
+        if project_indicators.intersection(filenames):
             projects.append(Path(dirpath))
 
             # Don't go any deeper into this directory
