@@ -5,7 +5,7 @@ from enum import IntEnum
 from pathlib import Path
 from typing import Optional
 
-from vmodule import VLOG_1, VLOG_2
+from vmodule import VLOG_2
 
 LOG = logging.getLogger(__name__)
 
@@ -23,13 +23,6 @@ def infer_top_level_dir(path: Path) -> Optional[Path]:
             return None
 
 
-def infer_python_versions(path: Path) -> list[str]:
-    """
-    Read the "most authoritative" python version(s) to allow fixes to ensure
-    those are mirrored e.g. in CI.
-    """
-
-
 class Env:
     def __init__(self, path: Path) -> None:
         # The (read-only) path representing this environment
@@ -38,11 +31,7 @@ class Env:
         # A relative path (or None) to a top-level python dir
         self.top_level_dir: Optional[Path] = infer_top_level_dir(path)
 
-        # Intended to be overridden, the python versions for this env that can
-        # be inferred from other config.
-        self.python_versions = infer_python_versions(path)
-
-    def get(self, func, *args, **kwargs):
+    def get(self, func, *args, **kwargs):  # type: ignore[no-untyped-def]
         """
         Basicalize a memoize decorator but one whose cache lifetime is tied to
         the Env, and doesn't require all functions to be known in advance.

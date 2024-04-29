@@ -5,7 +5,7 @@ import subprocess
 import tempfile
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Generator
+from typing import Generator, List, Optional, Union
 
 import moreorless.click
 
@@ -14,7 +14,7 @@ from .api import Env
 LOG = logging.getLogger(__name__)
 
 
-def run(cmd):
+def run(cmd: List[Union[str, Path]]) -> str:
     LOG.info("Run %s in %s", cmd, os.getcwd())
     proc = subprocess.run(cmd, encoding="utf-8", capture_output=True)
     LOG.debug("Ran %s -> %s", cmd, proc.returncode)
@@ -25,6 +25,8 @@ def run(cmd):
 # TODO support parallel workflow, which will work extremely well for git on
 # fixers that we don't know if they generate changes until after they run.
 class BaseWorkflow:
+    current_branch: Optional[str]
+
     def __init__(self, env: Env) -> None:
         self.env = env
         git_head_path = env.path / ".git" / "HEAD"
@@ -84,7 +86,11 @@ class BaseWorkflow:
 class TestWorkflow(BaseWorkflow):
     @contextmanager
     def work_in_branch(
-        self, branch_name: str, commit_message: str
+        self,
+        branch_name: str,
+        commit_message: str,
+        inplace: bool = False,
+        commit: bool = True,
     ) -> Generator[Path, None, None]:
         with tempfile.TemporaryDirectory() as d:
             shutil.copytree(self.env.path, Path(d, "work"))

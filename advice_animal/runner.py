@@ -1,8 +1,9 @@
 import logging
 import sys
 from pathlib import Path
+from typing import Generator, Tuple, Type
 
-from vmodule import VLOG_1, VLOG_2
+from vmodule import VLOG_1
 
 from .api import BaseCheck, Env, FixConfidence
 
@@ -15,8 +16,10 @@ class Runner:
         self.check_dir = check_dir
 
     def iter_check_classes(
-        self, confidence_filter=FixConfidence.UNSET, preview_filter: bool = False
-    ):
+        self,
+        confidence_filter: FixConfidence = FixConfidence.UNSET,
+        preview_filter: bool = False,
+    ) -> Generator[Tuple[str, Type[BaseCheck]], None, None]:
         try:
             # allow people to import their own utils, etc by altering sys.path
             sys.path.insert(0, self.check_dir.as_posix())
@@ -47,7 +50,7 @@ class Runner:
         finally:
             sys.path.pop(0)
 
-    def iter_checks(self):
+    def iter_checks(self) -> Generator[Tuple[str, bool, BaseCheck], None, None]:
         for n, cls in self.iter_check_classes():
             inst = cls(self.env)
             yield n, inst.check(), inst
