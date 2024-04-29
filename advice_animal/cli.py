@@ -5,7 +5,7 @@ import os
 from collections import defaultdict
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional
+from typing import List, Tuple, Optional
 
 import click
 from pathspec import PathSpec
@@ -70,7 +70,7 @@ case.  (Click's API prevents showing the actual live url here.)
 @click.option("--preview", is_flag=True)
 @click.option("-n", "--dry-run", is_flag=True)
 def main(
-    ctx,
+    ctx: click.Context,
     v: Optional[int],
     vmodule: Optional[str],
     advice_url: str,
@@ -79,15 +79,18 @@ def main(
     confidence: str,
     preview: bool,
     dry_run: bool,
-):
+) -> None:
     vmodule_init(v, vmodule)
     if advice_dir is None:
-        advice_dir = update_local_cache(advice_url, skip_update)
+        advice_path = update_local_cache(advice_url, skip_update)
+    else:
+        advice_path = Path(advice_dir)
 
+    assert advice_dir is not None
     # TODO resolve path, in case it's relative
     # TODO advice_repo, and autoupdate
     ctx.obj = Settings(
-        advice_path=Path(advice_dir),
+        advice_path=advice_path,
         confidence_filter=FixConfidence[confidence.upper()],
         preview_filter=preview,
         dry_run=dry_run,
@@ -97,7 +100,7 @@ def main(
 
 @main.command()
 @click.pass_context
-def show_effective_advice_dir(ctx):
+def show_effective_advice_dir(ctx: click.Context) -> None:
     """
     Prints the path to advice dir that would be used with this set of args.
     """
@@ -107,7 +110,7 @@ def show_effective_advice_dir(ctx):
 @main.command()
 @click.pass_context
 @click.option("--show-exception", is_flag=True)
-def test(ctx, show_exception):
+def test(ctx: click.Context, show_exception: bool) -> int:
     rv = 0
     advice_path = ctx.obj.advice_path.resolve()
 
@@ -216,7 +219,10 @@ def find_python_projects(path: Path) -> list[Path]:
 @main.command()
 @click.pass_context
 @click.argument("target")
-def check(ctx, target: str):
+def check(ctx: click.Context, target: str) -> None:
+    results_by_confidence: dict[FixConfidence, List[Tuple[str, bool]]] = defaultdict(
+        list
+    )
     projects = find_python_projects(Path(target))
     for project_path in projects:
         results_by_confidence: dict[
@@ -245,7 +251,7 @@ def check(ctx, target: str):
 @main.command()
 @click.pass_context
 @click.argument("target")
-def diff(ctx, target):
+def diff(ctx: click.Context, target: str) -> None:
     env = Env(Path(target))
     wf = BaseWorkflow(env)
 
@@ -264,7 +270,9 @@ def diff(ctx, target):
 @click.pass_context
 @click.option("--inplace", is_flag=True)
 @click.argument("target")
-def apply(ctx, inplace: bool, target: str):
+def apply(ctx: click.Context, inplace: bool, target: str) -> None:
+    env = Env(Path(target))
+    wf = BaseWorkflow(env)
     projects = find_python_projects(Path(target))
     for project_path in projects:
         env = Env(project_path)
