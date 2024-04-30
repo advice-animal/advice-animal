@@ -11,8 +11,7 @@ LOG = logging.getLogger(__name__)
 
 
 class Runner:
-    def __init__(self, env: Env, check_dir: Path) -> None:
-        self.env = env
+    def __init__(self, check_dir: Path) -> None:
         self.check_dir = check_dir
 
     def iter_check_classes(
