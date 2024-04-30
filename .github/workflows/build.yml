@@ -31,7 +31,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install -U .[test]
       - name: Test
-        run: python -m advice_animal.tests
+        run: pytest
 
   advice_animal:
     runs-on: ${{ matrix.os }}
