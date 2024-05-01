@@ -5,7 +5,7 @@ import os
 from collections import defaultdict
 from dataclasses import dataclass
 from pathlib import Path
-from typing import List, Tuple, Optional
+from typing import Optional
 
 import click
 from pathspec import PathSpec
@@ -113,7 +113,7 @@ def test(ctx: click.Context, show_exception: bool) -> int:
     rv = 0
     advice_path = ctx.obj.advice_path.resolve()
 
-    for n, cls in Runner(advice_path).iter_check_classes(
+    for n, cls in Runner(Env(Path()), advice_path).iter_check_classes(
         preview_filter=True,
     ):
         if (a_dir := advice_path.joinpath(n, "a")).exists():
@@ -200,7 +200,9 @@ def find_python_projects(path: Path) -> list[Path]:
     project_indicators = {"setup.py", "pyproject.toml"}
     projects = []
     root = project_root(path)
-    ignore = gitignore(root) + PathSpec.from_lines(GitWildMatchPattern, ["__pycache__", "*.egg-info", "*.dist-info"])
+    ignore = gitignore(root) + PathSpec.from_lines(
+        GitWildMatchPattern, ["__pycache__", "*.egg-info", "*.dist-info"]
+    )
 
     for dirpath, dirnames, filenames in os.walk(path):
         if ignore.match_file(dirpath):
@@ -219,9 +221,6 @@ def find_python_projects(path: Path) -> list[Path]:
 @click.pass_context
 @click.argument("target")
 def check(ctx: click.Context, target: str) -> None:
-    results_by_confidence: dict[FixConfidence, List[Tuple[str, bool]]] = defaultdict(
-        list
-    )
     projects = find_python_projects(Path(target))
     for project_path in projects:
         results_by_confidence: dict[
@@ -229,7 +228,7 @@ def check(ctx: click.Context, target: str) -> None:
         ] = defaultdict(list)
         env = Env(project_path)
 
-        for n, cls in Runner(Path(ctx.obj.advice_path)).iter_check_classes(
+        for n, cls in Runner(Env(Path()), Path(ctx.obj.advice_path)).iter_check_classes(
             confidence_filter=ctx.obj.confidence_filter,
             preview_filter=ctx.obj.preview_filter,
         ):
@@ -254,7 +253,7 @@ def diff(ctx: click.Context, target: str) -> None:
     env = Env(Path(target))
     wf = BaseWorkflow(env)
 
-    for n, cls in Runner(Path(ctx.obj.advice_path)).iter_check_classes(
+    for n, cls in Runner(env, Path(ctx.obj.advice_path)).iter_check_classes(
         confidence_filter=ctx.obj.confidence_filter,
         preview_filter=ctx.obj.preview_filter,
     ):
@@ -277,7 +276,7 @@ def apply(ctx: click.Context, inplace: bool, target: str) -> None:
         env = Env(project_path)
         wf = BaseWorkflow(env)
 
-        for n, cls in Runner(Path(ctx.obj.advice_path)).iter_check_classes(
+        for n, cls in Runner(env, Path(ctx.obj.advice_path)).iter_check_classes(
             confidence_filter=ctx.obj.confidence_filter,
             preview_filter=ctx.obj.preview_filter,
         ):
