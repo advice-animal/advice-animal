@@ -15,7 +15,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12", "3.13"]
+        python-version: ["3.9", "3.10", "3.11", "3.12", "3.13"]
         os: [macOS-latest, ubuntu-latest, windows-latest]
 
     steps:
@@ -31,7 +31,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install -U .[test]
       - name: Test
-        run: python -m advice_animal.tests
+        run: pytest
 
   advice_animal:
     runs-on: ${{ matrix.os }}

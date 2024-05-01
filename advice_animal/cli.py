@@ -83,7 +83,6 @@ def main(
     else:
         advice_path = Path(advice_dir)
 
-    assert advice_dir is not None
     # TODO resolve path, in case it's relative
     # TODO advice_repo, and autoupdate
     ctx.obj = Settings(
