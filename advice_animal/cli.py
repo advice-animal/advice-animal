@@ -207,7 +207,7 @@ def find_python_projects(path: Path) -> list[Path]:
     )
 
     for dirpath, dirnames, filenames in os.walk(path):
-        # Ignore directories that are ignored by .gitignore. 
+        # Ignore directories that are ignored by .gitignore.
         if ignore.match_file(dirpath):
             # Don't go any deeper into a directory that is ignored.
             dirnames.clear()
