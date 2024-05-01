@@ -220,8 +220,12 @@ def find_python_projects(path: Path) -> list[Path]:
 @main.command()
 @click.pass_context
 @click.argument("target")
-def check(ctx: click.Context, target: str) -> None:
-    projects = find_python_projects(Path(target))
+@click.option("-r", "--recursive", is_flag=True)
+def check(ctx: click.Context, target: str, recursive: bool) -> None:
+    if recursive:
+        projects = find_python_projects(Path(target))
+    else:
+        projects = [Path(target)]
     for project_path in projects:
         results_by_confidence: dict[
             FixConfidence, list[tuple[str, bool]]
