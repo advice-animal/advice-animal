@@ -194,24 +194,26 @@ def find_python_projects(path: Path) -> list[Path]:
     """
     Find every project in a mono-repo (or not).
     """
-    # A mono-repo may contain multiple projects
-    # The project root is defined as a directory containing a setup.py or
-    # pyproject.toml
+    # A mono-repo may contain multiple projects.
+    # The project root is  a directory containing a setup.py or pyproject.toml.
     project_indicators = {"setup.py", "pyproject.toml"}
     projects = []
     root = project_root(path)
     ignore = gitignore(root) + PathSpec.from_lines(
-        GitWildMatchPattern, ["__pycache__", "*.egg-info", "*.dist-info"]
+        GitWildMatchPattern, ["__pycache__", "*.egg-info", "*.dist-info", ".venv"]
     )
 
     for dirpath, dirnames, filenames in os.walk(path):
+        # Ignore directories that are ignored by .gitignore. 
         if ignore.match_file(dirpath):
+            # Don't go any deeper into a directory that is ignored.
+            dirnames.clear()
             continue
 
+        # If we find a project indicator, we've found a project.
         if project_indicators.intersection(filenames):
             projects.append(Path(dirpath))
-
-            # Don't go any deeper into this directory
+            # Don't go any deeper into this directory.
             dirnames.clear()
 
     return projects
