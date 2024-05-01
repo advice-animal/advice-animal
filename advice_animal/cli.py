@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import sys
 from collections import defaultdict
 from dataclasses import dataclass
 from pathlib import Path
@@ -32,7 +33,6 @@ class Settings:
     dry_run: bool
 
 
-# TODO checks-dir to ctx
 @click.group()
 @click.version_option()
 @click.pass_context
@@ -106,7 +106,10 @@ def show_effective_advice_dir(ctx: click.Context) -> None:
 @main.command()
 @click.pass_context
 @click.option("--show-exception", is_flag=True)
-def test(ctx: click.Context, show_exception: bool) -> int:
+def selftest_advice(ctx: click.Context, show_exception: bool) -> None:
+    """
+    Runs the a/ -> b/ tests contained in the currently-selected advice repo.
+    """
     rv = 0
     advice_path = ctx.obj.advice_path.resolve()
 
@@ -143,7 +146,7 @@ def test(ctx: click.Context, show_exception: bool) -> int:
                 rv |= 8
                 if show_exception:
                     LOG.exception(n)
-    return rv
+    sys.exit(rv)
 
 
 @main.command()

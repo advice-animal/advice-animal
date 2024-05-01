@@ -8,7 +8,7 @@ def test_smoke():
 
 def test_self_test():
     runner = CliRunner()
-    result = runner.invoke(main, ["test"])
+    result = runner.invoke(main, ["selftest-advice"])
     assert result.exit_code == 0
 
 
