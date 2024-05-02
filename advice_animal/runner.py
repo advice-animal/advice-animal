@@ -1,4 +1,5 @@
 import logging
+import re
 import sys
 from pathlib import Path
 from typing import Generator, Tuple, Type
@@ -17,8 +18,9 @@ class Runner:
 
     def iter_check_classes(
         self,
-        confidence_filter: FixConfidence = FixConfidence.UNSET,
-        preview_filter: bool = False,
+        confidence_filter: FixConfidence,
+        preview_filter: bool,
+        name_filter: re.Pattern[str],
     ) -> Generator[Tuple[str, Type[BaseCheck]], None, None]:
         try:
             # allow people to import their own utils, etc by altering sys.path
@@ -30,6 +32,13 @@ class Runner:
                     continue
 
                 mod = __import__(n)
+                if not name_filter.fullmatch(n):
+                    LOG.log(
+                        VLOG_1,
+                        "%s: name does not match, skip",
+                        n,
+                    )
+                    continue
                 if mod.Check.confidence < confidence_filter:
                     LOG.log(
                         VLOG_1,
@@ -49,8 +58,3 @@ class Runner:
 
         finally:
             sys.path.pop(0)
-
-    def iter_checks(self) -> Generator[Tuple[str, bool, BaseCheck], None, None]:
-        for n, cls in self.iter_check_classes():
-            inst = cls(self.env)
-            yield n, inst.check(), inst

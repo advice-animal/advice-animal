@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 import os
+import re
 import sys
 from collections import defaultdict
 from dataclasses import dataclass
@@ -33,6 +34,7 @@ class Settings:
     advice_path: Path
     confidence_filter: FixConfidence
     preview_filter: bool
+    name_filter: re.Pattern[str]
     dry_run: bool
 
 
@@ -66,8 +68,11 @@ case.  (Click's API prevents showing the actual live url here.)
     is_flag=True,
     help="When loading advice from a url, don't pull if some version already exists locally.",
 )
-@click.option("--confidence", default="unset")
-@click.option("--preview", is_flag=True)
+@click.option(
+    "--confidence", default="unset", help="Filter advice to be at least this confident"
+)
+@click.option("--preview", is_flag=True, help="Allow preview advice")
+@click.option("--only", default=".*", help="Filter advice names by regex")
 @click.option("-n", "--dry-run", is_flag=True)
 def main(
     ctx: click.Context,
@@ -78,6 +83,7 @@ def main(
     skip_update: bool,
     confidence: str,
     preview: bool,
+    only: str,
     dry_run: bool,
 ) -> None:
     vmodule_init(v, vmodule)
@@ -92,6 +98,7 @@ def main(
         advice_path=advice_path,
         confidence_filter=FixConfidence[confidence.upper()],
         preview_filter=preview,
+        name_filter=re.compile(only),
         dry_run=dry_run,
     )
     LOG.info("Using settings %s", ctx.obj)
@@ -118,6 +125,8 @@ def selftest_advice(ctx: click.Context, show_exception: bool) -> None:
 
     for n, cls in Runner(Env(Path()), advice_path).iter_check_classes(
         preview_filter=True,
+        confidence_filter=FixConfidence.UNSET,
+        name_filter=re.compile(".*"),
     ):
         if (a_dir := advice_path.joinpath(n, "a")).exists():
             try:
@@ -240,6 +249,7 @@ def check(ctx: click.Context, target: str, recursive: bool) -> None:
         for n, cls in Runner(Env(Path()), Path(ctx.obj.advice_path)).iter_check_classes(
             confidence_filter=ctx.obj.confidence_filter,
             preview_filter=ctx.obj.preview_filter,
+            name_filter=ctx.obj.name_filter,
         ):
             inst = cls(env)
             result = inst.check()
@@ -265,6 +275,7 @@ def diff(ctx: click.Context, target: str) -> None:
     for n, cls in Runner(env, Path(ctx.obj.advice_path)).iter_check_classes(
         confidence_filter=ctx.obj.confidence_filter,
         preview_filter=ctx.obj.preview_filter,
+        name_filter=ctx.obj.name_filter,
     ):
         inst = cls(env)
         if inst.check():
@@ -288,6 +299,7 @@ def apply(ctx: click.Context, inplace: bool, target: str) -> None:
         for n, cls in Runner(env, Path(ctx.obj.advice_path)).iter_check_classes(
             confidence_filter=ctx.obj.confidence_filter,
             preview_filter=ctx.obj.preview_filter,
+            name_filter=ctx.obj.name_filter,
         ):
             inst = cls(env)
             if inst.check():
