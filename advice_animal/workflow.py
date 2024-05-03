@@ -14,9 +14,9 @@ from .api import Env
 LOG = logging.getLogger(__name__)
 
 
-def run(cmd: List[Union[str, Path]]) -> str:
+def run(cmd: List[Union[str, Path]], check: bool = True) -> str:
     LOG.info("Run %s in %s", cmd, os.getcwd())
-    proc = subprocess.run(cmd, encoding="utf-8", capture_output=True)
+    proc = subprocess.run(cmd, encoding="utf-8", capture_output=True, check=check)
     LOG.debug("Ran %s -> %s", cmd, proc.returncode)
     LOG.debug("Stdout: %s", proc.stdout)
     return proc.stdout
