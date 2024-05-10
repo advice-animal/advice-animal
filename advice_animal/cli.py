@@ -104,7 +104,13 @@ def main(
     LOG.info("Using settings %s", ctx.obj)
 
 
-@main.command()
+@main.group()
+def self() -> None:
+    """Commands for interacting with advice-animal itself."""
+    pass
+
+
+@self.command()
 @click.pass_context
 def show_effective_advice_dir(ctx: click.Context) -> None:
     """
@@ -113,10 +119,10 @@ def show_effective_advice_dir(ctx: click.Context) -> None:
     print(ctx.obj.advice_path)
 
 
-@main.command()
+@self.command()
 @click.pass_context
 @click.option("--show-exception", is_flag=True)
-def selftest_advice(ctx: click.Context, show_exception: bool) -> None:
+def test(ctx: click.Context, show_exception: bool) -> None:
     """
     Runs the a/ -> b/ tests contained in the currently-selected advice repo.
     """
