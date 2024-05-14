@@ -36,7 +36,7 @@ class Env:
         self.top_level_dir: Optional[Path] = infer_top_level_dir(path)
 
         self.repo_root = self._find_repo_root()
-        self.py_projects = self._find_py_projects()
+        self.py_projects = self.find_py_projects()
 
     def get(self, func, *args, **kwargs):  # type: ignore[no-untyped-def]
         """

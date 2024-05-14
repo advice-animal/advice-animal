@@ -4,6 +4,7 @@ import re
 import subprocess
 import sys
 import tempfile
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Generator, Literal, Tuple, Type, Union
 
@@ -14,12 +15,20 @@ from .api import BaseCheck, Env, FixConfidence
 LOG = logging.getLogger(__name__)
 
 
-def run_cmd(cmd: list[Union[str, Path]]) -> str:
+def run_cmd(cmd: list[Union[str, Path]]) -> subprocess.CompletedProcess[str]:
     LOG.info("Run %s in %s", cmd, os.getcwd())
     proc = subprocess.run(cmd, encoding="utf-8", capture_output=True)
     LOG.debug("Ran %s -> %s", cmd, proc.returncode)
     LOG.debug("Stdout: %s", proc.stdout)
-    return proc.stdout
+    return proc
+
+
+@dataclass
+class Result:
+    advice_name: str
+    project: Path
+    success: bool
+    message: str
 
 
 class Runner:
@@ -69,9 +78,9 @@ class Runner:
             current_branch = git_head_path.read_text().strip().split("/")[-1]
         else:  # This is a detached HEAD or not a git repo
             current_branch = None
-            raise ValueError(
-                "Not a git repo"
-            )  # This is a placeholder, we should handle this case properly. Inplace changes can happen without a git repo
+            if not self.inplace:
+                raise ValueError("Not a git repo")
+        results = {}
         if self.inplace:
             cur_cwd = os.getcwd()
             try:
@@ -82,14 +91,29 @@ class Runner:
                     env = Env(repo)
                     for project in env.py_projects:
                         os.chdir(project)
-                        check = check_cls(env)
-                        check.check()
+                        try:
+                            check = check_cls(env)
+                            check.check()
+                            results[advice_name] = Result(
+                                advice_name=advice_name,
+                                project=project,
+                                success=True,
+                                message="",
+                            )
+                        except Exception as e:
+                            results[advice_name] = Result(
+                                advice_name=advice_name,
+                                project=project,
+                                success=False,
+                                message=str(e),
+                            )
             finally:
                 os.chdir(cur_cwd)
         else:
             cur_cwd = os.getcwd()
             with tempfile.TemporaryDirectory() as d:
                 run_cmd(["git", "clone", repo, d])
+                os.chdir(d)
                 env = Env(Path(d))
                 try:
                     for advice_name, check_cls in self.iter_check_classes(
@@ -106,14 +130,30 @@ class Runner:
                             ]
                         )
                         for project in env.py_projects:
+                            print("\tChecking", project)
                             os.chdir(project)
-                            check = check_cls(env)
-                            check.check()
-                            run_cmd(["git", "add", "-A"])
+                            try:
+                                check = check_cls(env)
+                                check.check()
+                                run_cmd(["git", "add", "-A"])
+                            except Exception as e:
+                                results[advice_name] = Result(
+                                    advice_name=advice_name,
+                                    project=project,
+                                    success=False,
+                                    message=str(e),
+                                )
                         if self.mode == "apply":
-                            run_cmd(["git", "commit", "-m", f"Apply {advice_name}"])
-                            run_cmd(["git", "push", "-f", "origin", advice_name])
-                            print(f"Created a branch {advice_name} with the changes")
+                            try:
+                                run_cmd(["git", "commit", "-m", f"Apply {advice_name}"])
+                                run_cmd(["git", "push", "-f", "origin", advice_name])
+                            except Exception as e:
+                                results[advice_name] = Result(
+                                    advice_name=advice_name,
+                                    project=project,
+                                    success=False,
+                                    message=str(e),
+                                )
                         elif self.mode == "diff":
                             run_cmd(["git", "diff", "--cached"])
                         elif self.mode == "check":

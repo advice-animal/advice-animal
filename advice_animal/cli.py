@@ -162,31 +162,14 @@ def selftest_advice(ctx: click.Context, show_exception: bool) -> None:
 @main.command()
 @click.pass_context
 @click.argument("target", default=".")
-@click.option("-r", "--recursive", is_flag=True)
-def check(ctx: click.Context, target: str, recursive: bool) -> None:
-    for project_path in projects:
-        results_by_confidence: dict[
-            FixConfidence, list[tuple[str, bool]]
-        ] = defaultdict(list)
-        env = Env(project_path)
-
-        for n, cls in Runner(Env(Path()), Path(ctx.obj.advice_path)).iter_check_classes(
-            confidence_filter=ctx.obj.confidence_filter,
-            preview_filter=ctx.obj.preview_filter,
-            name_filter=ctx.obj.name_filter,
-        ):
-            inst = cls(env)
-            result = inst.check()
-            LOG.log(VLOG_1, "Check %s returned %s", n, result)
-            if result:
-                results_by_confidence[inst.confidence].append((n, result))
-
-        for conf, results in sorted(results_by_confidence.items()):
-            print(project_path.absolute())
-            print(conf.name)
-            print("=" * len(conf.name))
-            for n, r in sorted(results):
-                print(n.ljust(25) + "needs to run")
+def check(ctx: click.Context, target: str) -> None:
+    runner = Runner(Path(ctx.obj.advice_path), inplace=False, mode="check")
+    results = runner.run(
+        repo=Path(target),
+        confidence_filter=ctx.obj.confidence_filter,
+        preview_filter=ctx.obj.preview_filter,
+        name_filter=ctx.obj.name_filter,
+    )
 
 
 @main.command()
