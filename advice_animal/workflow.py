@@ -29,7 +29,7 @@ class BaseWorkflow:
 
     def __init__(self, env: Env) -> None:
         self.env = env
-        git_head_path = env.path / ".git" / "HEAD"
+        git_head_path = env.repo_root / ".git" / "HEAD"
         if git_head_path.exists():
             self.current_branch = git_head_path.read_text().strip().split("/")[-1]
         else:
