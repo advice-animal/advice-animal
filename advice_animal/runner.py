@@ -10,7 +10,7 @@ from typing import Generator, Literal, Tuple, Type, Union
 
 from vmodule import VLOG_1
 
-from .api import BaseCheck, Env, FixConfidence
+from .api import BaseCheck, Env, FixConfidence, Mode
 
 LOG = logging.getLogger(__name__)
 
@@ -33,13 +33,11 @@ class Result:
 
 
 class Runner:
-    def __init__(
-        self, advice_path: Path, inplace: bool, mode: Literal["check", "diff", "apply"]
-    ) -> None:
+    def __init__(self, advice_path: Path, inplace: bool, mode: Mode) -> None:
         if not advice_path.is_dir():
             raise ValueError(f"{advice_path} is not a directory")
 
-        if inplace and mode != "apply":
+        if inplace and mode != Mode.apply:
             raise ValueError("inplace only valid with mode 'apply'")
 
         self.advice_path = advice_path
@@ -53,27 +51,6 @@ class Runner:
         preview_filter: bool,
         name_filter: re.Pattern[str],
     ):
-        """
-        1. Get a list of eligible checks
-        2. Clone the repo to a tempdir
-        3. For each check:
-            if inplace:
-                - Iterate over the python projects
-                - Run the check
-            else:
-                - Create a branch
-                - Iterate over the python projects
-                    - Run the check
-                    - git addremove
-                if mode == "diff":
-                    - git diff
-                elif mode == "apply":
-                    - git commit
-                    - git push
-                elif mode == "check":
-                    - git diff --exit-code
-
-        """
         git_head_path = repo / ".git" / "HEAD"
         if git_head_path.exists():
             current_branch = git_head_path.read_text().strip().split("/")[-1]
@@ -94,7 +71,7 @@ class Runner:
                         os.chdir(project)
                         try:
                             check = check_cls(env)
-                            changes_needed = bool(check.check())
+                            changes_needed = bool(check.run())
                             results[advice_name] = Result(
                                 advice_name=advice_name,
                                 project=project,
@@ -138,15 +115,15 @@ class Runner:
                                 LOG.log(VLOG_1, "Checking %s", project)
                                 os.chdir(project)
                                 check = check_cls(env)
-                                changes_needed |= bool(check.check())
+                                changes_needed |= bool(check.run())
                             run_cmd(["git", "add", "-A"])
-                            if self.mode == "apply":
+                            if self.mode == Mode.apply:
                                 run_cmd(["git", "commit", "-m", f"Apply {advice_name}"])
                                 run_cmd(["git", "push", "-f", "origin", advice_name])
                                 output = f"Changes applied to branch {advice_name}. Push the branch to create a PR."
-                            elif self.mode == "diff":
+                            elif self.mode == Mode.diff:
                                 output, _ = run_cmd(["git", "diff"])
-                            elif self.mode == "check":
+                            elif self.mode == Mode.check:
                                 _, returncode = run_cmd(
                                     ["git", "diff", "--exit-code", "--cached"],
                                     check=False,

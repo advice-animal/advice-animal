@@ -10,7 +10,7 @@ from typing import Optional
 import click
 from vmodule import vmodule_init
 
-from .api import Env, FixConfidence
+from .api import Env, FixConfidence, Mode
 
 from .runner import Runner
 from .update_checkout import update_local_cache
@@ -167,7 +167,7 @@ def test(ctx: click.Context, show_exception: bool) -> None:
 @click.pass_context
 @click.argument("target", default=".")
 def check(ctx: click.Context, target: str) -> None:
-    runner = Runner(Path(ctx.obj.advice_path), inplace=False, mode="check")
+    runner = Runner(Path(ctx.obj.advice_path), inplace=False, mode=Mode.check)
     results = runner.run(
         repo=Path(target),
         confidence_filter=ctx.obj.confidence_filter,
@@ -187,7 +187,7 @@ def check(ctx: click.Context, target: str) -> None:
 @click.pass_context
 @click.argument("target", default=".")
 def diff(ctx: click.Context, target: str) -> None:
-    runner = Runner(Path(ctx.obj.advice_path), inplace=False, mode="diff")
+    runner = Runner(Path(ctx.obj.advice_path), inplace=False, mode=Mode.diff)
     results = runner.run(
         repo=Path(target),
         confidence_filter=ctx.obj.confidence_filter,
@@ -212,7 +212,7 @@ def diff(ctx: click.Context, target: str) -> None:
 @click.argument("target", default=".")
 @click.option("--inplace", is_flag=True)
 def apply(ctx: click.Context, target: str, inplace: bool) -> None:
-    runner = Runner(Path(ctx.obj.advice_path), inplace=False, mode="apply")
+    runner = Runner(Path(ctx.obj.advice_path), inplace=False, mode=Mode.apply)
     results = runner.run(
         repo=Path(target),
         confidence_filter=ctx.obj.confidence_filter,

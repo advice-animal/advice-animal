@@ -72,6 +72,8 @@ class Env:
                 # Don't go any deeper into this directory.
                 dirnames.clear()
 
+        if not projects:
+            raise Exception("No python projects found in repo")
         return projects
 
     def _find_repo_root(self) -> Path:
@@ -122,6 +124,12 @@ class FixConfidence(IntEnum):
     GREEN = 30
 
 
+class Mode(IntEnum):
+    check = 10
+    diff = 20
+    apply = 30
+
+
 class BaseCheck:
     """
     This is the main class that you subclass to propose your own fixes.
@@ -152,3 +160,9 @@ class BaseCheck:
         included (you should not generally use scm commands here).
         """
         raise NotImplementedError
+
+    def run(self) -> bool:
+        if self.check():
+            self.apply(self.env.path)
+            return True
+        return False
