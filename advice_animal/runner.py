@@ -15,20 +15,21 @@ from .api import BaseCheck, Env, FixConfidence
 LOG = logging.getLogger(__name__)
 
 
-def run_cmd(cmd: list[Union[str, Path]]) -> subprocess.CompletedProcess[str]:
+def run_cmd(cmd: list[Union[str, Path]], check: bool = True) -> Tuple[str, int]:
     LOG.info("Run %s in %s", cmd, os.getcwd())
-    proc = subprocess.run(cmd, encoding="utf-8", capture_output=True)
+    proc = subprocess.run(cmd, encoding="utf-8", capture_output=True, check=check)
     LOG.debug("Ran %s -> %s", cmd, proc.returncode)
     LOG.debug("Stdout: %s", proc.stdout)
-    return proc
+    return proc.stdout, proc.returncode
 
 
 @dataclass
 class Result:
     advice_name: str
-    project: str
     success: bool
-    message: str
+    project: str = ""
+    message: str = ""
+    changes_needed: bool = False
 
 
 class Runner:
@@ -81,24 +82,24 @@ class Runner:
             if not self.inplace:
                 raise ValueError("Not a git repo")
         results = {}
-        if self.inplace:
+        if self.inplace:  # This is only applicable for `apply` command
             cur_cwd = os.getcwd()
             try:
                 for advice_name, check_cls in self.iter_check_classes(
                     confidence_filter, preview_filter, name_filter
                 ):
-                    print("Running check", advice_name)
+                    LOG.log(VLOG_1, "Running check %s", advice_name)
                     env = Env(repo)
                     for project in env.py_projects:
                         os.chdir(project)
                         try:
                             check = check_cls(env)
-                            check.check()
+                            changes_needed = bool(check.check())
                             results[advice_name] = Result(
                                 advice_name=advice_name,
                                 project=project,
                                 success=True,
-                                message="",
+                                changes_needed=changes_needed,
                             )
                         except Exception as e:
                             results[advice_name] = Result(
@@ -121,7 +122,9 @@ class Runner:
                         confidence_filter, preview_filter, name_filter
                     ):
                         try:
-                            print("Running check", advice_name)
+                            output = ""
+                            changes_needed = False
+                            LOG.log(VLOG_1, "Running check %s", advice_name)
                             run_cmd(
                                 [
                                     "git",
@@ -132,34 +135,41 @@ class Runner:
                                 ]
                             )
                             for project in env.py_projects:
-                                print("\tChecking", project)
+                                LOG.log(VLOG_1, "Checking %s", project)
                                 os.chdir(project)
                                 check = check_cls(env)
-                                check.check()
+                                changes_needed = bool(check.check())
                                 run_cmd(["git", "add", "-A"])
                             if self.mode == "apply":
                                 run_cmd(["git", "commit", "-m", f"Apply {advice_name}"])
                                 run_cmd(["git", "push", "-f", "origin", advice_name])
                             elif self.mode == "diff":
-                                run_cmd(["git", "diff", "--cached"])
+                                output, _ = run_cmd(["git", "diff"])
                             elif self.mode == "check":
-                                run_cmd(["git", "diff", "--exit-code", "--cached"])
+                                _, returncode = run_cmd(
+                                    ["git", "diff", "--exit-code", "--cached"],
+                                    check=False,
+                                )
+                                if returncode == 0:
+                                    output = "No changes needed"
+                                elif returncode == 1:
+                                    output = "Changes can be applied"
                             results[advice_name] = Result(
                                 advice_name=advice_name,
-                                project="",
                                 success=True,
-                                message="",
+                                changes_needed=changes_needed,
+                                message=output,
                             )
                         except Exception as e:
                             results[advice_name] = Result(
                                 advice_name=advice_name,
-                                project="",
                                 success=False,
                                 message=str(e),
                             )
                             return results
                 finally:
                     os.chdir(cur_cwd)
+        return results
 
     def iter_check_classes(
         self,

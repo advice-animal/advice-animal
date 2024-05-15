@@ -176,26 +176,37 @@ def check(ctx: click.Context, target: str) -> None:
         preview_filter=ctx.obj.preview_filter,
         name_filter=ctx.obj.name_filter,
     )
-    failed_runs = {n: r for n, r in results.items() if not r.success}
+    for advice_name, result in results.items():
+        if result.success:
+            click.echo(click.style(advice_name, fg="green") + ": " + result.message)
+        else:
+            click.echo(
+                click.style(advice_name, fg="red") + " failed: " + result.message
+            )
 
 
 @main.command()
 @click.pass_context
-@click.argument("target")
+@click.argument("target", default=".")
 def diff(ctx: click.Context, target: str) -> None:
-    env = Env(Path(target))
-    wf = BaseWorkflow(env)
-
-    for n, cls in Runner(env, Path(ctx.obj.advice_path)).iter_check_classes(
+    runner = Runner(Path(ctx.obj.advice_path), inplace=False, mode="diff")
+    results = runner.run(
+        repo=Path(target),
         confidence_filter=ctx.obj.confidence_filter,
         preview_filter=ctx.obj.preview_filter,
         name_filter=ctx.obj.name_filter,
-    ):
-        inst = cls(env)
-        if inst.check():
-            click.echo(click.style(n, fg="red") + " would make changes")
-            with wf.work_in_branch("advice-" + n, "", commit=False) as workdir:
-                inst.apply(workdir)
+    )
+    for advice_name, result in results.items():
+        if result.success:
+            if result.changes_needed:
+                click.echo(click.style(advice_name, fg="green") + ": Changes Needed:")
+                click.echo(click.style(advice_name, fg="green") + result.message)
+            else:
+                click.echo(click.style(advice_name, fg="green") + ": No changes needed")
+        else:
+            click.echo(
+                click.style(advice_name, fg="red") + " failed: " + result.message
+            )
 
 
 @main.command()
