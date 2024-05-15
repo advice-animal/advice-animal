@@ -138,8 +138,8 @@ class Runner:
                                 LOG.log(VLOG_1, "Checking %s", project)
                                 os.chdir(project)
                                 check = check_cls(env)
-                                changes_needed = bool(check.check())
-                                run_cmd(["git", "add", "-A"])
+                                changes_needed |= bool(check.check())
+                            run_cmd(["git", "add", "-A"])
                             if self.mode == "apply":
                                 run_cmd(["git", "commit", "-m", f"Apply {advice_name}"])
                                 run_cmd(["git", "push", "-f", "origin", advice_name])
