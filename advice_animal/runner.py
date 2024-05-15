@@ -143,6 +143,7 @@ class Runner:
                             if self.mode == "apply":
                                 run_cmd(["git", "commit", "-m", f"Apply {advice_name}"])
                                 run_cmd(["git", "push", "-f", "origin", advice_name])
+                                output = f"Changes applied to branch {advice_name}. Push the branch to create a PR."
                             elif self.mode == "diff":
                                 output, _ = run_cmd(["git", "diff"])
                             elif self.mode == "check":
