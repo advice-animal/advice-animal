@@ -176,6 +176,7 @@ def check(ctx: click.Context, target: str) -> None:
         preview_filter=ctx.obj.preview_filter,
         name_filter=ctx.obj.name_filter,
     )
+    failed_runs = {n: r for n, r in results.items() if not r.success}
 
 
 @main.command()

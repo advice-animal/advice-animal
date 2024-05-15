@@ -26,7 +26,7 @@ def run_cmd(cmd: list[Union[str, Path]]) -> subprocess.CompletedProcess[str]:
 @dataclass
 class Result:
     advice_name: str
-    project: Path
+    project: str
     success: bool
     message: str
 
@@ -107,6 +107,7 @@ class Runner:
                                 success=False,
                                 message=str(e),
                             )
+                            return results
             finally:
                 os.chdir(cur_cwd)
         else:
@@ -119,45 +120,44 @@ class Runner:
                     for advice_name, check_cls in self.iter_check_classes(
                         confidence_filter, preview_filter, name_filter
                     ):
-                        print("Running check", advice_name)
-                        run_cmd(
-                            [
-                                "git",
-                                "checkout",
-                                "-b",
-                                advice_name,
-                                f"origin/{current_branch}",
-                            ]
-                        )
-                        for project in env.py_projects:
-                            print("\tChecking", project)
-                            os.chdir(project)
-                            try:
+                        try:
+                            print("Running check", advice_name)
+                            run_cmd(
+                                [
+                                    "git",
+                                    "checkout",
+                                    "-b",
+                                    advice_name,
+                                    f"origin/{current_branch}",
+                                ]
+                            )
+                            for project in env.py_projects:
+                                print("\tChecking", project)
+                                os.chdir(project)
                                 check = check_cls(env)
                                 check.check()
                                 run_cmd(["git", "add", "-A"])
-                            except Exception as e:
-                                results[advice_name] = Result(
-                                    advice_name=advice_name,
-                                    project=project,
-                                    success=False,
-                                    message=str(e),
-                                )
-                        if self.mode == "apply":
-                            try:
+                            if self.mode == "apply":
                                 run_cmd(["git", "commit", "-m", f"Apply {advice_name}"])
                                 run_cmd(["git", "push", "-f", "origin", advice_name])
-                            except Exception as e:
-                                results[advice_name] = Result(
-                                    advice_name=advice_name,
-                                    project=project,
-                                    success=False,
-                                    message=str(e),
-                                )
-                        elif self.mode == "diff":
-                            run_cmd(["git", "diff", "--cached"])
-                        elif self.mode == "check":
-                            run_cmd(["git", "diff", "--exit-code", "--cached"])
+                            elif self.mode == "diff":
+                                run_cmd(["git", "diff", "--cached"])
+                            elif self.mode == "check":
+                                run_cmd(["git", "diff", "--exit-code", "--cached"])
+                            results[advice_name] = Result(
+                                advice_name=advice_name,
+                                project="",
+                                success=True,
+                                message="",
+                            )
+                        except Exception as e:
+                            results[advice_name] = Result(
+                                advice_name=advice_name,
+                                project="",
+                                success=False,
+                                message=str(e),
+                            )
+                            return results
                 finally:
                     os.chdir(cur_cwd)
 
