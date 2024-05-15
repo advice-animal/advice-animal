@@ -130,7 +130,7 @@ class Runner:
                                     "git",
                                     "checkout",
                                     "-b",
-                                    advice_name,
+                                    f"advice-{advice_name}",
                                     f"origin/{current_branch}",
                                 ]
                             )
