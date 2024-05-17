@@ -90,7 +90,7 @@ class Runner:
                 os.chdir(cur_cwd)
         else:
             cur_cwd = os.getcwd()
-            with tempfile.TemporaryDirectory(delete=False) as d:
+            with tempfile.TemporaryDirectory() as d:
                 run_cmd(["git", "clone", repo, d])
                 os.chdir(d)
                 env = Env(Path(d))
