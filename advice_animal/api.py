@@ -31,6 +31,7 @@ class Env:
     def __init__(self, path: Path) -> None:
         # The (read-only) path representing this environment
         self.path = path
+        self.next_steps: list[str] = []
 
         # A relative path (or None) to a top-level python dir
         self.top_level_dir: Optional[Path] = infer_top_level_dir(path)

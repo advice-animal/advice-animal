@@ -6,7 +6,7 @@ import sys
 import tempfile
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Generator, Tuple, Type, Union
+from typing import Generator, Optional, Sequence, Tuple, Type, Union
 
 from vmodule import VLOG_1
 
@@ -27,8 +27,11 @@ def run_cmd(cmd: list[Union[str, Path]], check: bool = True) -> Tuple[str, int]:
 class Result:
     advice_name: str
     success: bool
+    branch_name: Optional[str] = None
+    next_steps: Sequence[str] = ()
+    modified: bool = False
     message: str = ""
-    changes_needed: bool = False
+    error: str = ""
 
 
 class Runner:
@@ -74,13 +77,13 @@ class Runner:
                             results[advice_name] = Result(
                                 advice_name=advice_name,
                                 success=True,
-                                changes_needed=changes_needed,
+                                modified=changes_needed,
                             )
                         except Exception as e:
                             results[advice_name] = Result(
                                 advice_name=advice_name,
                                 success=False,
-                                message=str(e),
+                                error=str(e),
                             )
                             return results
             finally:
@@ -106,6 +109,7 @@ class Runner:
     def _branch_run(self, advice_name, env):
         try:
             output = ""
+            del env.next_steps[:]
             changes_needed = False
             LOG.log(VLOG_1, "Running check %s", advice_name)
             # In case a previous branch hit an exception, make sure we're in a fresh
@@ -127,7 +131,13 @@ class Runner:
                 changes_needed |= bool(check.run())
             run_cmd(["git", "add", "-A"])
             if self.mode == Mode.apply:
-                run_cmd(["git", "commit", "-m", f"Apply {advice_name}"])
+                message = f"Apply {advice_name}"
+                if env.next_steps:
+                    message += "\n\n"
+                    for next_step in env.next_steps:
+                        message += next_step + "\n"
+
+                run_cmd(["git", "commit", "-m", message])
                 run_cmd(["git", "push", "-f", "origin", branch_name])
                 output = f"Changes applied to branch {branch_name}. Push the branch to create a PR."
             elif self.mode == Mode.diff:
@@ -144,14 +154,15 @@ class Runner:
             return Result(
                 advice_name=advice_name,
                 success=True,
-                changes_needed=changes_needed,
+                modified=changes_needed,
                 message=output,
+                branch_name=branch_name,
             )
         except Exception as e:
             return Result(
                 advice_name=advice_name,
                 success=False,
-                message=str(e),
+                error=str(e),
             )
 
     def iter_check_classes(

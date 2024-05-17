@@ -198,7 +198,7 @@ def diff(ctx: click.Context, target: str) -> None:
     )
     for advice_name, result in results.items():
         if result.success:
-            if result.changes_needed:
+            if result.modified:
                 click.echo(click.style(advice_name, fg="green") + ": Changes Needed:")
                 click.echo(click.style(advice_name, fg="green") + result.message)
             else:
@@ -223,8 +223,12 @@ def apply(ctx: click.Context, target: str, inplace: bool) -> None:
     )
     for advice_name, result in results.items():
         if result.success:
-            if result.changes_needed:
+            if result.modified:
                 click.echo(click.style(advice_name, fg="green") + ": " + result.message)
+                for next_step in result.next_steps:
+                    click.echo(
+                        click.style(advice_name, fg="yellow") + ": " + result.next_step
+                    )
             else:
                 click.echo(click.style(advice_name, fg="green") + ": No changes needed")
         else:
