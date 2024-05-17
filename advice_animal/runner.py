@@ -96,58 +96,63 @@ class Runner:
                         confidence_filter, preview_filter, name_filter
                     ):
                         branch_name = f"advice-{advice_name}"
-                        try:
-                            output = ""
-                            changes_needed = False
-                            LOG.log(VLOG_1, "Running check %s", advice_name)
-                            # In case a previous branch hit an exception, make sure we're in a fresh
-                            # clean state.
-                            run_cmd(["git", "clean", "-fdx"])
-                            run_cmd(
-                                [
-                                    "git",
-                                    "checkout",
-                                    "-b",
-                                    branch_name,
-                                    f"origin/{current_branch}",
-                                ]
-                            )
-                            for project in env.py_projects:
-                                LOG.log(VLOG_1, "Checking %s", project)
-                                os.chdir(project)
-                                check = check_cls(env)
-                                changes_needed |= bool(check.run())
-                            run_cmd(["git", "add", "-A"])
-                            if self.mode == Mode.apply:
-                                run_cmd(["git", "commit", "-m", f"Apply {advice_name}"])
-                                run_cmd(["git", "push", "-f", "origin", branch_name])
-                                output = f"Changes applied to branch {branch_name}. Push the branch to create a PR."
-                            elif self.mode == Mode.diff:
-                                output, _ = run_cmd(["git", "diff"])
-                            elif self.mode == Mode.check:
-                                _, returncode = run_cmd(
-                                    ["git", "diff", "--exit-code", "--cached"],
-                                    check=False,
-                                )
-                                if returncode == 0:
-                                    output = "No changes needed"
-                                elif returncode == 1:
-                                    output = "Changes can be applied"
-                            results[advice_name] = Result(
-                                advice_name=advice_name,
-                                success=True,
-                                changes_needed=changes_needed,
-                                message=output,
-                            )
-                        except Exception as e:
-                            results[advice_name] = Result(
-                                advice_name=advice_name,
-                                success=False,
-                                message=str(e),
-                            )
+                        results[advice_name] = self._branch_run(advice_name, env)
+
                 finally:
                     os.chdir(cur_cwd)
+
         return results
+
+    def _branch_run(self, advice_name, env):
+        try:
+            output = ""
+            changes_needed = False
+            LOG.log(VLOG_1, "Running check %s", advice_name)
+            # In case a previous branch hit an exception, make sure we're in a fresh
+            # clean state.
+            run_cmd(["git", "clean", "-fdx"])
+            run_cmd(
+                [
+                    "git",
+                    "checkout",
+                    "-b",
+                    branch_name,
+                    f"origin/{current_branch}",
+                ]
+            )
+            for project in env.py_projects:
+                LOG.log(VLOG_1, "Checking %s", project)
+                os.chdir(project)
+                check = check_cls(env)
+                changes_needed |= bool(check.run())
+            run_cmd(["git", "add", "-A"])
+            if self.mode == Mode.apply:
+                run_cmd(["git", "commit", "-m", f"Apply {advice_name}"])
+                run_cmd(["git", "push", "-f", "origin", branch_name])
+                output = f"Changes applied to branch {branch_name}. Push the branch to create a PR."
+            elif self.mode == Mode.diff:
+                output, _ = run_cmd(["git", "diff"])
+            elif self.mode == Mode.check:
+                _, returncode = run_cmd(
+                    ["git", "diff", "--exit-code", "--cached"],
+                    check=False,
+                )
+                if returncode == 0:
+                    output = "No changes needed"
+                elif returncode == 1:
+                    output = "Changes can be applied"
+            return Result(
+                advice_name=advice_name,
+                success=True,
+                changes_needed=changes_needed,
+                message=output,
+            )
+        except Exception as e:
+            return Result(
+                advice_name=advice_name,
+                success=False,
+                message=str(e),
+            )
 
     def iter_check_classes(
         self,

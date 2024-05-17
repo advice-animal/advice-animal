@@ -162,6 +162,14 @@ class BaseCheck:
         raise NotImplementedError
 
     def run(self) -> bool:
+        """
+        Intended for sub-classing. Apply this check's fix in `self.env`.
+
+        Return value is whether it made changes.
+
+        Assume that if a commit is being made that any added, modified or deleted files will
+        automatically be included (you should not generally use scm commands here).
+        """
         if self.check():
             self.apply(self.env.path)
             return True
