@@ -61,14 +61,14 @@ class Env:
 
         for dirpath, dirnames, filenames in os.walk(self.path):
             # Ignore directories that are ignored by .gitignore.
-            if ignore.match_file(dirpath):
+            if ignore.match_file(Path(dirpath).resolve().relative_to(root)):
                 # Don't go any deeper into a directory that is ignored.
                 dirnames.clear()
                 continue
 
             # If we find a project indicator, we've found a project.
             if project_indicators.intersection(filenames):
-                projects.append(Path(dirpath))
+                projects.append(Path(dirpath).resolve().relative_to(root))
                 # Don't go any deeper into this directory.
                 dirnames.clear()
 
@@ -94,7 +94,7 @@ class Env:
             if any((parent / marker).exists() for marker in root_markers):
                 return parent
 
-        return parent
+        return self.path.resolve()
 
     @staticmethod
     def gitignore(path: Path) -> PathSpec:

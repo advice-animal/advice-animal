@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import logging
 import re
+import shutil
 import sys
+import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
@@ -14,7 +16,7 @@ from .api import Env, FixConfidence, Mode
 
 from .runner import Runner
 from .update_checkout import update_local_cache
-from .workflow import compare, TestWorkflow
+from .workflow import compare
 
 LOG = logging.getLogger(__name__)
 
@@ -125,24 +127,24 @@ def test(ctx: click.Context, show_exception: bool) -> None:
     rv = 0
     advice_path = ctx.obj.advice_path.resolve()
 
-    for n, cls in Runner(Env(Path()), advice_path).iter_check_classes(
+    for n, cls in Runner(advice_path, inplace=True, mode=Mode.apply).iter_check_classes(
         preview_filter=True,
         confidence_filter=FixConfidence.UNSET,
         name_filter=re.compile(".*"),
     ):
         if (a_dir := advice_path.joinpath(n, "a")).exists():
             try:
-                inst = cls(Env(a_dir))
-                assert inst.check()  # it wants to run
-                LOG.debug("past check")
+                with tempfile.TemporaryDirectory() as d:
+                    workdir = Path(d, "workdir")
+                    shutil.copytree(a_dir, workdir)
+                    Path(workdir, "pyproject.toml").touch()
 
-                wf = TestWorkflow(Env(a_dir))
-                LOG.debug("past TestWorkflow")
+                    inst = cls(Env(workdir))
+                    assert inst.check()  # it wants to run
+                    LOG.debug("past check")
 
-                with wf.work_in_branch("", "") as workdir:
-                    LOG.debug("past work_in_branch")
                     inst.apply(workdir)
-                    LOG.debug("past apply")
+
                     lrv = compare(advice_path.joinpath(n, "b"), workdir)
 
                     if cls(Env(workdir)).check():
@@ -222,7 +224,7 @@ def apply(ctx: click.Context, target: str, inplace: bool) -> None:
     for advice_name, result in results.items():
         if result.success:
             if result.changes_needed:
-                click.echo(click.style(advice_name, fg="green") + result.message)
+                click.echo(click.style(advice_name, fg="green") + ": " + result.message)
             else:
                 click.echo(click.style(advice_name, fg="green") + ": No changes needed")
         else:
