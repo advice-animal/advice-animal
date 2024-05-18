@@ -89,6 +89,7 @@ class Runner:
             finally:
                 os.chdir(cur_cwd)
         else:
+            assert current_branch is not None
             cur_cwd = os.getcwd()
             with tempfile.TemporaryDirectory() as d:
                 run_cmd(["git", "clone", repo, d])
@@ -98,18 +99,26 @@ class Runner:
                     for advice_name, check_cls in self.iter_check_classes(
                         confidence_filter, preview_filter, name_filter
                     ):
-                        branch_name = f"advice-{advice_name}"
-                        results[advice_name] = self._branch_run(advice_name, env)
+                        results[advice_name] = self._branch_run(
+                            advice_name, check_cls, env, current_branch
+                        )
 
                 finally:
                     os.chdir(cur_cwd)
 
         return results
 
-    def _branch_run(self, advice_name, env):
+    def _branch_run(
+        self,
+        advice_name: str,
+        check_cls: type[BaseCheck],
+        env: Env,
+        current_branch: str,
+    ) -> Result:
         try:
             output = ""
             del env.next_steps[:]
+            branch_name = f"advice-{advice_name}"
             changes_needed = False
             LOG.log(VLOG_1, "Running check %s", advice_name)
             # In case a previous branch hit an exception, make sure we're in a fresh
@@ -175,6 +184,7 @@ class Runner:
             # allow people to import their own utils, etc by altering sys.path
             sys.path.insert(0, self.advice_path.as_posix())
             for t in sorted(self.advice_path.iterdir()):
+                LOG.log(VLOG_1, "Handling %s", t)
                 if t.is_dir() and (t / "__init__.py").exists():
                     n = t.name
                 else:

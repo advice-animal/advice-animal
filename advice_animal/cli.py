@@ -140,17 +140,15 @@ def test(ctx: click.Context, show_exception: bool) -> None:
                     Path(workdir, "pyproject.toml").touch()
 
                     inst = cls(Env(workdir))
-                    assert inst.check()  # it wants to run
-                    LOG.debug("past check")
-
-                    inst.apply(workdir)
-
+                    status = inst.run()
                     lrv = compare(advice_path.joinpath(n, "b"), workdir)
 
-                    if cls(Env(workdir)).check():
+                    if cls(Env(workdir)).run():
                         result = click.style("NOT DONE", fg="yellow")
                     elif lrv:
                         result = click.style("FAIL", fg="red")
+                    elif not status:
+                        result = click.style("DID NOT RUN", fg="red")
                     else:
                         result = click.style("PASS", fg="green")
                     LOG.debug("past second check")
@@ -226,9 +224,7 @@ def apply(ctx: click.Context, target: str, inplace: bool) -> None:
             if result.modified:
                 click.echo(click.style(advice_name, fg="green") + ": " + result.message)
                 for next_step in result.next_steps:
-                    click.echo(
-                        click.style(advice_name, fg="yellow") + ": " + result.next_step
-                    )
+                    click.echo(click.style(advice_name, fg="yellow") + ": " + next_step)
             else:
                 click.echo(click.style(advice_name, fg="green") + ": No changes needed")
         else:
