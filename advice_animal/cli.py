@@ -212,7 +212,7 @@ def diff(ctx: click.Context, target: str) -> None:
 @click.argument("target", default=".")
 @click.option("--inplace", is_flag=True)
 def apply(ctx: click.Context, target: str, inplace: bool) -> None:
-    runner = Runner(Path(ctx.obj.advice_path), inplace=False, mode=Mode.apply)
+    runner = Runner(Path(ctx.obj.advice_path), inplace=inplace, mode=Mode.apply)
     results = runner.run(
         repo=Path(target),
         confidence_filter=ctx.obj.confidence_filter,
@@ -228,9 +228,7 @@ def apply(ctx: click.Context, target: str, inplace: bool) -> None:
             else:
                 click.echo(click.style(advice_name, fg="green") + ": No changes needed")
         else:
-            click.echo(
-                click.style(advice_name, fg="red") + " failed: " + result.message
-            )
+            click.echo(click.style(advice_name, fg="red") + " failed: " + result.error)
 
 
 if __name__ == "__main__":
