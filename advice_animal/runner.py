@@ -86,6 +86,7 @@ class Runner:
                                 error=str(e),
                             )
                             return results
+                        os.chdir(cur_cwd)
             finally:
                 os.chdir(cur_cwd)
         else:
@@ -145,10 +146,12 @@ class Runner:
                     message += "\n\n"
                     for next_step in env.next_steps:
                         message += next_step + "\n"
-
-                run_cmd(["git", "commit", "-m", message])
-                run_cmd(["git", "push", "-f", "origin", branch_name])
-                output = f"Changes applied to branch {branch_name}. Push the branch to create a PR."
+                if not changes_needed:
+                    output = "No changes needed"
+                else:
+                    run_cmd(["git", "commit", "-m", message])
+                    run_cmd(["git", "push", "-f", "origin", branch_name])
+                    output = f"Changes applied to branch {branch_name}. Push the branch to create a PR."
             elif self.mode == Mode.diff:
                 output, _ = run_cmd(["git", "diff"])
             elif self.mode == Mode.check:
