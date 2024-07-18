@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import os
 import re
 import shutil
 import sys
@@ -138,20 +139,24 @@ def test(ctx: click.Context, show_exception: bool) -> None:
                     workdir = Path(d, "workdir")
                     shutil.copytree(a_dir, workdir)
                     Path(workdir, "pyproject.toml").touch()
+                    old_pwd = os.getcwd()
+                    try:
+                        os.chdir(workdir)
+                        inst = cls(Env(workdir))
+                        status = inst.run()
+                        lrv = compare(advice_path.joinpath(n, "b"), workdir)
 
-                    inst = cls(Env(workdir))
-                    status = inst.run()
-                    lrv = compare(advice_path.joinpath(n, "b"), workdir)
-
-                    if cls(Env(workdir)).run():
-                        result = click.style("NOT DONE", fg="yellow")
-                    elif lrv:
-                        result = click.style("FAIL", fg="red")
-                    elif not status:
-                        result = click.style("DID NOT RUN", fg="red")
-                    else:
-                        result = click.style("PASS", fg="green")
-                    LOG.debug("past second check")
+                        if cls(Env(workdir)).run():
+                            result = click.style("NOT DONE", fg="yellow")
+                        elif lrv:
+                            result = click.style("FAIL", fg="red")
+                        elif not status:
+                            result = click.style("DID NOT RUN", fg="red")
+                        else:
+                            result = click.style("PASS", fg="green")
+                        LOG.debug("past second check")
+                    finally:
+                        os.chdir(old_pwd)
 
                 click.echo(n.ljust(25) + result)
                 rv |= int(lrv)  # 0/1

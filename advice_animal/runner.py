@@ -86,6 +86,7 @@ class Runner:
                                 error=str(e),
                             )
                             return results
+                        os.chdir(cur_cwd)
             finally:
                 os.chdir(cur_cwd)
         else:
