@@ -1,3 +1,5 @@
+import os
+
 from advice_animal.cli import main
 from click.testing import CliRunner
 
@@ -21,10 +23,8 @@ def test_self_check():
 
 
 def test_list():
+    os.environ["ADVICE_DIR"] = "tests/advice"
     runner = CliRunner()
     result = runner.invoke(main, ["list"])
-    assert (
-        "click_version_option : GREEN \nruff_show_source : YELLOW (preview)\nuse_py_typed : GREEN \n"
-        in result.output
-    )
+    assert "pip-tools - (preview)\nshouty\n" in result.output
     assert result.exit_code == 0
