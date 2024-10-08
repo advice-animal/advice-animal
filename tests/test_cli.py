@@ -16,7 +16,7 @@ def test_self_test():
     assert result.exit_code == 0
 
 
-def test_self_check():
+def test_check():
     runner = CliRunner()
     result = runner.invoke(main, ["check", "."])
     assert result.exit_code == 0
