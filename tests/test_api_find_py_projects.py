@@ -1,6 +1,8 @@
-import pytest
 from pathlib import Path
+
+import pytest
 from advice_animal.api import Env
+
 
 def test_find_py_projects(tmp_path):
     # Create a folder with .gitignore
@@ -16,7 +18,8 @@ def test_find_py_projects(tmp_path):
 
     e = Env(tmp_path)
     py_projects = e.find_py_projects()
-    assert py_projects == [Path("proj_a"), Path("proj_b")]
+    assert sorted(py_projects) == [Path("proj_a"), Path("proj_b")]
+
 
 def test_ignored_files(tmp_path):
     # Check if ignored files are ignored correctly

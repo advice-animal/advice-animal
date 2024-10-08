@@ -190,6 +190,20 @@ def check(ctx: click.Context, target: str) -> None:
 
 @main.command()
 @click.pass_context
+def list(ctx: click.Context) -> None:
+    runner = Runner(Path(ctx.obj.advice_path), inplace=False, mode=Mode.check)
+    for advice_name, check_cls in runner.iter_check_classes(
+        FixConfidence.UNSET, True, re.compile(".*")
+    ):
+        if check_cls.confidence.name != "UNSET":
+            name = click.style(advice_name, fg=check_cls.confidence.name.lower())
+        else:
+            name = click.style(advice_name, fg="green")
+        click.echo(f"{name}{' - (preview)' if check_cls.preview else ''}")
+
+
+@main.command()
+@click.pass_context
 @click.argument("target", default=".")
 def diff(ctx: click.Context, target: str) -> None:
     runner = Runner(Path(ctx.obj.advice_path), inplace=False, mode=Mode.diff)
