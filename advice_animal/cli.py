@@ -102,7 +102,7 @@ def main(
     target: str,
     in_branches: bool,
     all: bool,
-    advice_names: List[str],
+    advice_names: list[str],
     # Operation
     selftest: bool,
     config: bool,
@@ -115,6 +115,9 @@ def main(
 
     if config and selftest:
         raise Exception("Can't enable both --config and --selftest simultaneously")
+
+    if all and advice_names:
+        raise Exception("Can't enable both -a and provide advice names simultaneously")
 
     if advice_names:
         only = "|".join(advice_name_re(name) for name in advice_names)
@@ -150,7 +153,7 @@ def show_config(ctx: click.Context) -> None:
     print(json.dumps(ctx.obj.__dict__, default=str))
 
 
-def perform_selftest(ctx: click.Context) -> None:
+def perform_selftest(ctx: click.Context, show_exception: bool = True) -> None:
     """
     Runs the a/ -> b/ tests contained in the currently-selected advice repo.
     """
