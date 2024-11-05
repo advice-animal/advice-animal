@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import logging
 import os
 import re
@@ -14,6 +15,7 @@ import click
 from vmodule import vmodule_init
 
 from .api import Env, FixConfidence, Mode
+from .naming import advice_name_re
 
 from .runner import Runner
 from .update_checkout import update_local_cache
@@ -30,6 +32,7 @@ DEFAULT_ADVICE_URL = ADVICE_SAMPLE_URL
 
 @dataclass
 class Settings:
+    advice_url: Optional[str]  # only set if used
     advice_path: Path
     confidence_filter: FixConfidence
     preview_filter: bool
@@ -37,9 +40,8 @@ class Settings:
     dry_run: bool
 
 
-@click.group()
+@click.command
 @click.version_option()
-@click.pass_context
 @click.option("-v", type=int)
 @click.option("--vmodule")
 @click.option(
@@ -59,7 +61,7 @@ takes prescedence over the normal way to find advice, using --advice-url below.
     help=f"""\
 Set the repo url from which advice is dispensed.  This is typically set by
 wrappers, the ADVICE_URL env var, or has a default of {ADVICE_SAMPLE_URL} worst
-case.  (Click's API prevents showing the actual live url here.)
+case.  (Click's API prevents showing the actual live url here, but check --config)
 """,
 )
 @click.option(
@@ -67,23 +69,43 @@ case.  (Click's API prevents showing the actual live url here.)
     is_flag=True,
     help="When loading advice from a url, don't pull if some version already exists locally.",
 )
+# Filtering
 @click.option(
     "--confidence", default="unset", help="Filter advice to be at least this confident"
 )
 @click.option("--preview", is_flag=True, help="Allow preview advice")
-@click.option("--only", default=".*", help="Filter advice names by regex")
+@click.option("-a", "--all", is_flag=True, help="Use all advice")
+@click.argument("advice_names", nargs=-1)
+# Modifying how fixing happens
 @click.option("-n", "--dry-run", is_flag=True)
+@click.option("--target", default=".", help="Path to check, defaulting to current dir")
+@click.option(
+    "--in-branches", is_flag=True, help="In independent branches instead of inplace"
+)
+# Special non-fixing modes
+@click.option("--selftest", is_flag=True, help="Check viability of advice repo")
+@click.option("--config", is_flag=True, help="Show configuration")
+@click.pass_context
 def main(
     ctx: click.Context,
+    # Logging config
     v: Optional[int],
     vmodule: Optional[str],
+    # Advice dir
     advice_url: str,
     advice_dir: Optional[str],
     skip_update: bool,
+    # Choice of advice
     confidence: str,
     preview: bool,
-    only: str,
     dry_run: bool,
+    target: str,
+    in_branches: bool,
+    all: bool,
+    advice_names: list[str],
+    # Operation
+    selftest: bool,
+    config: bool,
 ) -> None:
     vmodule_init(v, vmodule)
     if advice_dir is None:
@@ -91,9 +113,21 @@ def main(
     else:
         advice_path = Path(advice_dir)
 
+    if config and selftest:
+        raise Exception("Can't enable both --config and --selftest simultaneously")
+
+    if all and advice_names:
+        raise Exception("Can't enable both -a and provide advice names simultaneously")
+
+    if advice_names:
+        only = "|".join(advice_name_re(name) for name in advice_names)
+    else:
+        only = ".*"
+
     # TODO resolve path, in case it's relative
     # TODO advice_repo, and autoupdate
     ctx.obj = Settings(
+        advice_url=advice_url if advice_dir is None else None,
         advice_path=advice_path,
         confidence_filter=FixConfidence[confidence.upper()],
         preview_filter=preview,
@@ -102,26 +136,24 @@ def main(
     )
     LOG.info("Using settings %s", ctx.obj)
 
+    if selftest:
+        perform_selftest(ctx)
+    elif config:
+        show_config(ctx)
+    elif advice_names or all:
+        apply(ctx, target, not in_branches)
+    else:
+        show_list(ctx)
 
-@main.group()
-def self() -> None:
-    """Commands for interacting with advice-animal itself."""
-    pass
 
-
-@self.command()
-@click.pass_context
-def show_effective_advice_dir(ctx: click.Context) -> None:
+def show_config(ctx: click.Context) -> None:
     """
     Prints the path to advice dir that would be used with this set of args.
     """
-    print(ctx.obj.advice_path)
+    print(json.dumps(ctx.obj.__dict__, default=str))
 
 
-@self.command()
-@click.pass_context
-@click.option("--show-exception", is_flag=True)
-def test(ctx: click.Context, show_exception: bool) -> None:
+def perform_selftest(ctx: click.Context, show_exception: bool = True) -> None:
     """
     Runs the a/ -> b/ tests contained in the currently-selected advice repo.
     """
@@ -168,68 +200,19 @@ def test(ctx: click.Context, show_exception: bool) -> None:
     sys.exit(rv)
 
 
-@main.command()
-@click.pass_context
-@click.argument("target", default=".")
-def check(ctx: click.Context, target: str) -> None:
+def show_list(ctx: click.Context) -> None:
     runner = Runner(Path(ctx.obj.advice_path), inplace=False, mode=Mode.check)
-    results = runner.run(
-        repo=Path(target),
-        confidence_filter=ctx.obj.confidence_filter,
-        preview_filter=ctx.obj.preview_filter,
-        name_filter=ctx.obj.name_filter,
-    )
-    for advice_name, result in results.items():
-        if result.success:
-            click.echo(click.style(advice_name, fg="green") + ": " + result.message)
-        else:
-            click.echo(
-                click.style(advice_name, fg="red") + " failed: " + result.message
-            )
-
-
-@main.command()
-@click.pass_context
-def list(ctx: click.Context) -> None:
-    runner = Runner(Path(ctx.obj.advice_path), inplace=False, mode=Mode.check)
+    print("Available advice:")
     for advice_name, check_cls in runner.iter_check_classes(
-        FixConfidence.UNSET, True, re.compile(".*")
+        ctx.obj.confidence_filter, ctx.obj.preview_filter, ctx.obj.name_filter
     ):
         if check_cls.confidence.name != "UNSET":
             name = click.style(advice_name, fg=check_cls.confidence.name.lower())
         else:
             name = click.style(advice_name, fg="green")
-        click.echo(f"{name}{' - (preview)' if check_cls.preview else ''}")
+        click.echo(f"* {name}{' - (preview)' if check_cls.preview else ''}")
 
 
-@main.command()
-@click.pass_context
-@click.argument("target", default=".")
-def diff(ctx: click.Context, target: str) -> None:
-    runner = Runner(Path(ctx.obj.advice_path), inplace=False, mode=Mode.diff)
-    results = runner.run(
-        repo=Path(target),
-        confidence_filter=ctx.obj.confidence_filter,
-        preview_filter=ctx.obj.preview_filter,
-        name_filter=ctx.obj.name_filter,
-    )
-    for advice_name, result in results.items():
-        if result.success:
-            if result.modified:
-                click.echo(click.style(advice_name, fg="green") + ": Changes Needed:")
-                click.echo(click.style(advice_name, fg="green") + result.message)
-            else:
-                click.echo(click.style(advice_name, fg="green") + ": No changes needed")
-        else:
-            click.echo(
-                click.style(advice_name, fg="red") + " failed: " + result.message
-            )
-
-
-@main.command()
-@click.pass_context
-@click.argument("target", default=".")
-@click.option("--inplace", is_flag=True)
 def apply(ctx: click.Context, target: str, inplace: bool) -> None:
     runner = Runner(Path(ctx.obj.advice_path), inplace=inplace, mode=Mode.apply)
     results = runner.run(
@@ -251,4 +234,8 @@ def apply(ctx: click.Context, target: str, inplace: bool) -> None:
 
 
 if __name__ == "__main__":
+    # Allow using "advice-animal pave --args" to still work
+    if sys.argv[1:2] == ["pave"]:
+        del sys.argv[1:2]
+
     main()
