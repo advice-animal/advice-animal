@@ -16,7 +16,7 @@ def test_self_test():
     assert result.exit_code == 0
 
 
-def test_check():
+def test_check(tmp_git):
     runner = CliRunner()
     result = runner.invoke(main, ["-a"])
     assert result.exit_code == 0
