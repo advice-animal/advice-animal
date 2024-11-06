@@ -1,0 +1,5 @@
+$ advice-animal --config --selftest
+Usage: main [OPTIONS] [ADVICE_NAMES]...
+Try 'main --help' for help.
+
+Error: Can't enable both --config and --selftest simultaneously
