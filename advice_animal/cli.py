@@ -9,7 +9,7 @@ import sys
 import tempfile
 from dataclasses import dataclass, fields, is_dataclass
 from pathlib import Path
-from typing import Optional
+from typing import Any, Optional
 
 import click
 from vmodule import vmodule_init
@@ -172,7 +172,7 @@ def show_config(ctx: click.Context) -> None:
     Prints the path to advice dir that would be used with this set of args.
     """
 
-    def default(obj):
+    def default(obj: Any) -> Any:
         if is_dataclass(obj):
             return {k.name: getattr(obj, k.name) for k in fields(obj)}
         elif isinstance(obj, re.Pattern):
