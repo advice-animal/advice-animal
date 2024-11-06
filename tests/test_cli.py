@@ -26,5 +26,5 @@ def test_list():
     os.environ["ADVICE_DIR"] = "tests/advice"
     runner = CliRunner()
     result = runner.invoke(main, ["--preview"])
-    assert "* pip-tools - (preview)\n* shouty\n" in result.output
+    assert "* shouty\n* pip-tools - (preview)\n" in result.output
     assert result.exit_code == 0
