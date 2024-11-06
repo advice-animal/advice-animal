@@ -1,0 +1,5 @@
+$ advice-animal foo -a
+Usage: main [OPTIONS] [ADVICE_NAMES]...
+Try 'main --help' for help.
+
+Error: Can't enable both -a and provide advice names simultaneously

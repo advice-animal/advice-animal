@@ -132,6 +132,11 @@ def main(
     selftest: bool,
     config: bool,
 ) -> None:
+    """
+    Advice names also match dir prefixes, so that if there's an advice called
+    "foo/bar/baz" you can refer to it by its full name, or to run the whole
+    group either "foo" or "foo/bar" will find it among others.
+    """
     vmodule_init(v, vmodule)
     if advice_dir is None:
         advice_path = update_local_cache(advice_url, skip_update, freeze)
@@ -139,10 +144,14 @@ def main(
         advice_path = Path(advice_dir)
 
     if config and selftest:
-        raise Exception("Can't enable both --config and --selftest simultaneously")
+        raise click.UsageError(
+            "Can't enable both --config and --selftest simultaneously"
+        )
 
     if all and advice_names:
-        raise Exception("Can't enable both -a and provide advice names simultaneously")
+        raise click.UsageError(
+            "Can't enable both -a and provide advice names simultaneously"
+        )
 
     if advice_names:
         only = "|".join(advice_name_re(name) for name in advice_names)
