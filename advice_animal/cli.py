@@ -269,7 +269,11 @@ def apply(ctx: click.Context, target: str, inplace: bool) -> None:
     for advice_name, result in results.items():
         if result.success:
             if result.modified:
-                click.echo(click.style(advice_name, fg="green") + ": " + result.message)
+                click.echo(
+                    click.style(advice_name, fg="green")
+                    + ": "
+                    + (result.message or "Changes made")
+                )
                 for next_step in result.next_steps:
                     click.echo(click.style(advice_name, fg="yellow") + ": " + next_step)
             else:
