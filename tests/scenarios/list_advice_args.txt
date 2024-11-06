@@ -1,0 +1,3 @@
+$ advice-animal --confidence yellow --preview
+Available advice:
+* pip-tools - (preview)
