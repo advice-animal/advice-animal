@@ -26,8 +26,10 @@ LOG = logging.getLogger(__name__)
 ADVICE_URL_ENV_VAR = "ADVICE_URL"
 ADVICE_DIR_ENV_VAR = "ADVICE_DIR"
 ADVICE_SAMPLE_URL = "https://github.com/advice-animal/advice-sample"
-# The following is intended to be adjusted by wrappers after import, see `docs/advice.md`
+# The following are intended to be adjusted by wrappers after import, see `docs/integration.md`
 DEFAULT_ADVICE_URL = ADVICE_SAMPLE_URL
+VERSION_PROJECT = "advice-animal"
+VERSION_DESC = "%(prog)s, version %(version)s"
 
 
 @dataclass
@@ -40,8 +42,28 @@ class Settings:
     dry_run: bool
 
 
+def version_callback(ctx: click.Context, param: click.Parameter, value: bool) -> None:
+    if not value or ctx.resilient_parsing:
+        return
+    import importlib.metadata
+
+    version = importlib.metadata.version(VERSION_PROJECT)
+    click.echo(
+        VERSION_DESC % {"prog": ctx.find_root().info_name, "version": version},
+        color=ctx.color,
+    )
+    ctx.exit()
+
+
 @click.command
-@click.version_option()
+@click.pass_context
+@click.option(
+    "--version",
+    callback=version_callback,
+    is_flag=True,
+    is_eager=True,
+    expose_value=False,
+)
 @click.option("-v", type=int)
 @click.option("--vmodule")
 @click.option(
@@ -85,7 +107,6 @@ case.  (Click's API prevents showing the actual live url here, but check --confi
 # Special non-fixing modes
 @click.option("--selftest", is_flag=True, help="Check viability of advice repo")
 @click.option("--config", is_flag=True, help="Show configuration")
-@click.pass_context
 def main(
     ctx: click.Context,
     # Logging config
