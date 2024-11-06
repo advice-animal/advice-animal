@@ -1,5 +1,6 @@
 import logging
 import os
+import os.path
 import re
 import subprocess
 import sys
@@ -64,6 +65,14 @@ class Runner:
         if self.inplace:  # This is only applicable for `apply` command
             cur_cwd = os.getcwd()
             try:
+                os.chdir(repo)
+                try:
+                    run_cmd(["git", "diff", "-s", "--exit-code"])
+                except subprocess.CalledProcessError:
+                    raise ValueError(
+                        "Can't use inplace on a dirty checkout; commit first"
+                    ) from None
+
                 for advice_name, check_cls in self.iter_check_classes(
                     confidence_filter, preview_filter, name_filter
                 ):
@@ -83,7 +92,7 @@ class Runner:
                             results[advice_name] = Result(
                                 advice_name=advice_name,
                                 success=False,
-                                error=str(e),
+                                error=repr(e),
                             )
                             return results
                         os.chdir(cur_cwd)
@@ -186,37 +195,45 @@ class Runner:
         try:
             # allow people to import their own utils, etc by altering sys.path
             sys.path.insert(0, self.advice_path.as_posix())
-            for t in sorted(self.advice_path.iterdir()):
-                LOG.log(VLOG_1, "Handling %s", t)
-                if t.is_dir() and (t / "__init__.py").exists():
-                    n = t.name
-                else:
+            for dirpath, dirnames, filenames in os.walk(self.advice_path):
+                dirnames[:] = sorted([d for d in dirnames if not d.startswith(".")])
+                if "__init__.py" not in filenames:
                     continue
 
-                mod = __import__(n)
-                if not name_filter.fullmatch(n):
+                del dirnames[:]
+                display_name = os.path.relpath(dirpath, self.advice_path)
+                import_name = display_name.replace("/", ".")
+
+                LOG.log(VLOG_1, "Handling %s", display_name)
+
+                __import__(import_name)
+                mod = sys.modules[import_name]
+                if not name_filter.fullmatch(display_name):
                     LOG.log(
                         VLOG_1,
                         "%s: name does not match, skip",
-                        n,
+                        display_name,
                     )
                     continue
                 if mod.Check.confidence < confidence_filter:
                     LOG.log(
                         VLOG_1,
                         "%s: %s < filter %s, skip",
-                        n,
+                        display_name,
                         mod.Check.confidence,
                         confidence_filter,
                     )
                     continue
                 if mod.Check.preview and not preview_filter:
                     LOG.log(
-                        VLOG_1, "%s: preview with filter %s, skip", n, preview_filter
+                        VLOG_1,
+                        "%s: preview with filter %s, skip",
+                        display_name,
+                        preview_filter,
                     )
                     continue
 
-                yield n, mod.Check
+                yield display_name, mod.Check
 
         finally:
             sys.path.pop(0)
