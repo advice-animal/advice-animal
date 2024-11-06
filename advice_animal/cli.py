@@ -7,7 +7,7 @@ import re
 import shutil
 import sys
 import tempfile
-from dataclasses import dataclass
+from dataclasses import dataclass, fields, is_dataclass
 from pathlib import Path
 from typing import Optional
 
@@ -171,7 +171,16 @@ def show_config(ctx: click.Context) -> None:
     """
     Prints the path to advice dir that would be used with this set of args.
     """
-    print(json.dumps(ctx.obj.__dict__, default=str))
+
+    def default(obj):
+        if is_dataclass(obj):
+            return {k.name: getattr(obj, k.name) for k in fields(obj)}
+        elif isinstance(obj, re.Pattern):
+            return obj.pattern
+        else:
+            return str(obj)
+
+    print(json.dumps(ctx.obj.__dict__, default=default))
 
 
 def perform_selftest(ctx: click.Context, show_exception: bool = True) -> None:
