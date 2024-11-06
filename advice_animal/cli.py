@@ -196,7 +196,9 @@ def perform_selftest(ctx: click.Context, show_exception: bool = True) -> None:
     rv = 0
     advice_path = ctx.obj.advice_path.resolve()
 
-    for n, cls in Runner(advice_path, inplace=True, mode=Mode.apply).iter_check_classes(
+    for n, cls in Runner(
+        advice_path, inplace=True, mode=Mode.apply
+    ).order_check_classes(
         Filter(
             preview_filter=True,
             confidence_filter=FixConfidence.UNSET,
@@ -241,7 +243,7 @@ def perform_selftest(ctx: click.Context, show_exception: bool = True) -> None:
 def show_list(ctx: click.Context) -> None:
     runner = Runner(Path(ctx.obj.advice_path), inplace=False, mode=Mode.check)
     print("Available advice:")
-    for advice_name, check_cls in runner.iter_check_classes(ctx.obj.filter):
+    for advice_name, check_cls in runner.order_check_classes(ctx.obj.filter):
         if check_cls.confidence.name != "UNSET":
             name = click.style(advice_name, fg=check_cls.confidence.name.lower())
         else:
