@@ -1,5 +1,8 @@
 from advice_animal import BaseCheck, FixConfidence
 
+import central_lib  # ensure that project imports work
+assert central_lib
+
 class Check(BaseCheck):
     order = 10
     def run(self):
