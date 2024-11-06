@@ -47,7 +47,7 @@ def version_callback(ctx: click.Context, param: click.Parameter, value: bool) ->
 
     version = importlib.metadata.version(VERSION_PROJECT)
     click.echo(
-        VERSION_DESC % {"prog": ctx.find_root().info_name, "version": version},
+        VERSION_DESC % {"prog": VERSION_PROJECT, "version": version},
         color=ctx.color,
     )
     ctx.exit()
