@@ -17,7 +17,7 @@ from vmodule import vmodule_init
 from .api import Env, FixConfidence, Mode
 from .naming import advice_name_re
 
-from .runner import Runner
+from .runner import Filter, Runner
 from .update_checkout import update_local_cache
 from .workflow import compare
 
@@ -36,9 +36,7 @@ VERSION_DESC = "%(prog)s, version %(version)s"
 class Settings:
     advice_url: Optional[str]  # only set if used
     advice_path: Path
-    confidence_filter: FixConfidence
-    preview_filter: bool
-    name_filter: re.Pattern[str]
+    filter: Filter
     dry_run: bool
 
 
@@ -150,9 +148,11 @@ def main(
     ctx.obj = Settings(
         advice_url=advice_url if advice_dir is None else None,
         advice_path=advice_path,
-        confidence_filter=FixConfidence[confidence.upper()],
-        preview_filter=preview,
-        name_filter=re.compile(only),
+        filter=Filter(
+            confidence_filter=FixConfidence[confidence.upper()],
+            preview_filter=preview,
+            name_filter=re.compile(only),
+        ),
         dry_run=dry_run,
     )
     LOG.info("Using settings %s", ctx.obj)
@@ -182,9 +182,11 @@ def perform_selftest(ctx: click.Context, show_exception: bool = True) -> None:
     advice_path = ctx.obj.advice_path.resolve()
 
     for n, cls in Runner(advice_path, inplace=True, mode=Mode.apply).iter_check_classes(
-        preview_filter=True,
-        confidence_filter=FixConfidence.UNSET,
-        name_filter=re.compile(".*"),
+        Filter(
+            preview_filter=True,
+            confidence_filter=FixConfidence.UNSET,
+            name_filter=re.compile(".*"),
+        )
     ):
         if (a_dir := advice_path.joinpath(n, "a")).exists():
             try:
@@ -224,9 +226,7 @@ def perform_selftest(ctx: click.Context, show_exception: bool = True) -> None:
 def show_list(ctx: click.Context) -> None:
     runner = Runner(Path(ctx.obj.advice_path), inplace=False, mode=Mode.check)
     print("Available advice:")
-    for advice_name, check_cls in runner.iter_check_classes(
-        ctx.obj.confidence_filter, ctx.obj.preview_filter, ctx.obj.name_filter
-    ):
+    for advice_name, check_cls in runner.iter_check_classes(ctx.obj.filter):
         if check_cls.confidence.name != "UNSET":
             name = click.style(advice_name, fg=check_cls.confidence.name.lower())
         else:
@@ -238,9 +238,7 @@ def apply(ctx: click.Context, target: str, inplace: bool) -> None:
     runner = Runner(Path(ctx.obj.advice_path), inplace=inplace, mode=Mode.apply)
     results = runner.run(
         repo=Path(target),
-        confidence_filter=ctx.obj.confidence_filter,
-        preview_filter=ctx.obj.preview_filter,
-        name_filter=ctx.obj.name_filter,
+        filter=ctx.obj.filter,
     )
     for advice_name, result in results.items():
         if result.success:

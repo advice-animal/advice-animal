@@ -2,7 +2,7 @@ import pytest
 import re
 from pathlib import Path
 import subprocess
-from advice_animal.runner import Runner, Mode, FixConfidence
+from advice_animal.runner import Runner, Mode, FixConfidence, Filter
 
 def test_inplace(tmp_git):
     Path("README.txt").write_text("Hello")
@@ -13,14 +13,14 @@ def test_inplace(tmp_git):
         mode=Mode.apply,
     )
     with pytest.raises(ValueError):
-        results = r.run(tmp_git, FixConfidence.UNSET, preview_filter=False,
-        name_filter=re.compile(r".*"))
+        results = r.run(tmp_git, Filter(FixConfidence.UNSET, preview_filter=False,
+        name_filter=re.compile(r".*")))
         print(results)
 
     subprocess.check_call(["git", "commit", "-a", "-m", "foo"])
 
-    results = r.run(tmp_git, FixConfidence.UNSET, preview_filter=False,
-    name_filter=re.compile(r".*"))
+    results = r.run(tmp_git, Filter(FixConfidence.UNSET, preview_filter=False,
+    name_filter=re.compile(r".*")))
 
     assert results["shouty"].success
 
@@ -37,6 +37,6 @@ def test_git(tmp_path):
         inplace=True,
         mode=Mode.apply,
     )
-    results = r.run(tmp_path, FixConfidence.UNSET, preview_filter=False,
-    name_filter=re.compile(r".*"))
+    results = r.run(tmp_path, Filter(FixConfidence.UNSET, preview_filter=False,
+    name_filter=re.compile(r".*")))
     assert results["shouty"].success
