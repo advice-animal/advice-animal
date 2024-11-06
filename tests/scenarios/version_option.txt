@@ -1,0 +1,2 @@
+$ advice-animal --version
+advice-animal, version 0.<stuff>
