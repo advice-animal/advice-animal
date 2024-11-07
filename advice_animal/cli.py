@@ -139,7 +139,7 @@ def main(
     """
     # Allow using "advice-animal pave --args" to still work
     if advice_names and advice_names[0] == "pave":
-        del advice_names[0]
+        advice_names = advice_names[1:]
 
     vmodule_init(v, vmodule)
     if advice_dir is None:
