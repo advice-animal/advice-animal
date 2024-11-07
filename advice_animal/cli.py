@@ -137,6 +137,10 @@ def main(
     "foo/bar/baz" you can refer to it by its full name, or to run the whole
     group either "foo" or "foo/bar" will find it among others.
     """
+    # Allow using "advice-animal pave --args" to still work
+    if advice_names and advice_names[0] == "pave":
+        del advice_names[0]
+
     vmodule_init(v, vmodule)
     if advice_dir is None:
         advice_path = update_local_cache(advice_url, skip_update, freeze)
@@ -291,8 +295,4 @@ def apply(ctx: click.Context, target: str, inplace: bool) -> None:
 
 
 if __name__ == "__main__":
-    # Allow using "advice-animal pave --args" to still work
-    if sys.argv[1:2] == ["pave"]:
-        del sys.argv[1:2]
-
     main()
