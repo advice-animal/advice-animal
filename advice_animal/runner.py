@@ -35,6 +35,38 @@ class Result:
     error: str = ""
 
 
+@dataclass
+class Filter:
+    confidence_filter: FixConfidence
+    preview_filter: bool
+    name_filter: re.Pattern[str]
+
+    def include(self, display_name: str, check: BaseCheck) -> bool:
+        if not self.name_filter.fullmatch(display_name):
+            LOG.log(VLOG_1, "%s: name does not match, skip", display_name)
+            return False
+        if check.confidence < self.confidence_filter:
+            LOG.log(
+                VLOG_1,
+                "%s: confidence %s < filter %s, skip",
+                display_name,
+                check.confidence,
+                self.confidence_filter,
+            )
+            return False
+        if check.preview and not self.preview_filter:
+            LOG.log(
+                VLOG_1,
+                "%s: preview with filter %s, skip",
+                display_name,
+                self.preview_filter,
+            )
+            return False
+
+        LOG.log(VLOG_1, "%s: include", display_name)
+        return True
+
+
 class Runner:
     def __init__(self, advice_path: Path, inplace: bool, mode: Mode) -> None:
         if not advice_path.is_dir():
@@ -50,9 +82,7 @@ class Runner:
     def run(
         self,
         repo: Path,
-        confidence_filter: FixConfidence,
-        preview_filter: bool,
-        name_filter: re.Pattern[str],
+        filter: Filter,
     ) -> dict[str, Result]:
         git_head_path = repo / ".git" / "HEAD"
         if git_head_path.exists():
@@ -73,9 +103,7 @@ class Runner:
                         "Can't use inplace on a dirty checkout; commit first"
                     ) from None
 
-                for advice_name, check_cls in self.iter_check_classes(
-                    confidence_filter, preview_filter, name_filter
-                ):
+                for advice_name, check_cls in self.iter_check_classes(filter):
                     LOG.log(VLOG_1, "Running check %s", advice_name)
                     env = Env(repo)
                     for project in env.py_projects:
@@ -106,9 +134,7 @@ class Runner:
                 os.chdir(d)
                 env = Env(Path(d))
                 try:
-                    for advice_name, check_cls in self.iter_check_classes(
-                        confidence_filter, preview_filter, name_filter
-                    ):
+                    for advice_name, check_cls in self.iter_check_classes(filter):
                         results[advice_name] = self._branch_run(
                             advice_name, check_cls, env, current_branch
                         )
@@ -188,9 +214,7 @@ class Runner:
 
     def iter_check_classes(
         self,
-        confidence_filter: FixConfidence,
-        preview_filter: bool,
-        name_filter: re.Pattern[str],
+        filter: Filter,
     ) -> Generator[Tuple[str, Type[BaseCheck]], None, None]:
         try:
             # allow people to import their own utils, etc by altering sys.path
@@ -208,32 +232,8 @@ class Runner:
 
                 __import__(import_name)
                 mod = sys.modules[import_name]
-                if not name_filter.fullmatch(display_name):
-                    LOG.log(
-                        VLOG_1,
-                        "%s: name does not match, skip",
-                        display_name,
-                    )
-                    continue
-                if mod.Check.confidence < confidence_filter:
-                    LOG.log(
-                        VLOG_1,
-                        "%s: %s < filter %s, skip",
-                        display_name,
-                        mod.Check.confidence,
-                        confidence_filter,
-                    )
-                    continue
-                if mod.Check.preview and not preview_filter:
-                    LOG.log(
-                        VLOG_1,
-                        "%s: preview with filter %s, skip",
-                        display_name,
-                        preview_filter,
-                    )
-                    continue
-
-                yield display_name, mod.Check
+                if filter.include(display_name, mod.Check):
+                    yield display_name, mod.Check
 
         finally:
             sys.path.pop(0)
