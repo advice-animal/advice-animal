@@ -17,13 +17,17 @@ def get_local_cache_name(url: str) -> str:
     return f"{repo_name}-{url_hash[:8]}"
 
 
-def update_local_cache(url: str, skip_update: bool) -> Path:
+def update_local_cache(url: str, skip_update: bool, freeze: bool = False) -> Path:
     import appdirs
 
     cache_dir = Path(appdirs.user_cache_dir("advice-animal", "advice-animal"))
     local_checkout = cache_dir / get_local_cache_name(url)
+    freeze_name = local_checkout / ".git" / "freeze"
     if not local_checkout.exists():
         subprocess.check_output(["git", "clone", url, local_checkout])
     elif not skip_update:
-        subprocess.check_output(["git", "pull"], cwd=local_checkout)
+        if not freeze_name.exists():
+            subprocess.check_output(["git", "pull"], cwd=local_checkout)
+    if freeze:
+        freeze_name.touch()
     return local_checkout

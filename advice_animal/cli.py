@@ -91,6 +91,11 @@ case.  (Click's API prevents showing the actual live url here, but check --confi
     is_flag=True,
     help="When loading advice from a url, don't pull if some version already exists locally.",
 )
+@click.option(
+    "--freeze",
+    is_flag=True,
+    help="Assume skip-update on all further operations against this advice url (useful for building a docker image).",
+)
 # Filtering
 @click.option(
     "--confidence", default="unset", help="Filter advice to be at least this confident"
@@ -116,6 +121,7 @@ def main(
     advice_url: str,
     advice_dir: Optional[str],
     skip_update: bool,
+    freeze: bool,
     # Choice of advice
     confidence: str,
     preview: bool,
@@ -130,7 +136,7 @@ def main(
 ) -> None:
     vmodule_init(v, vmodule)
     if advice_dir is None:
-        advice_path = update_local_cache(advice_url, skip_update)
+        advice_path = update_local_cache(advice_url, skip_update, freeze)
     else:
         advice_path = Path(advice_dir)
 
