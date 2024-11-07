@@ -103,7 +103,7 @@ class Runner:
                         "Can't use inplace on a dirty checkout; commit first"
                     ) from None
 
-                for advice_name, check_cls in self.iter_check_classes(filter):
+                for advice_name, check_cls in self.order_check_classes(filter):
                     LOG.log(VLOG_1, "Running check %s", advice_name)
                     env = Env(repo)
                     for project in env.py_projects:
@@ -134,7 +134,7 @@ class Runner:
                 os.chdir(d)
                 env = Env(Path(d))
                 try:
-                    for advice_name, check_cls in self.iter_check_classes(filter):
+                    for advice_name, check_cls in self.order_check_classes(filter):
                         results[advice_name] = self._branch_run(
                             advice_name, check_cls, env, current_branch
                         )
@@ -212,10 +212,16 @@ class Runner:
                 error=str(e),
             )
 
+    def order_check_classes(self, filter: Filter) -> list[tuple[str, Type[BaseCheck]]]:
+        return sorted(
+            self.iter_check_classes(filter),
+            key=(lambda x: (x[1].order, x[0])),
+        )
+
     def iter_check_classes(
         self,
         filter: Filter,
-    ) -> Generator[Tuple[str, Type[BaseCheck]], None, None]:
+    ) -> Generator[tuple[str, Type[BaseCheck]], None, None]:
         try:
             # allow people to import their own utils, etc by altering sys.path
             sys.path.insert(0, self.advice_path.as_posix())
