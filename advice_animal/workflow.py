@@ -20,8 +20,9 @@ def run(cmd: List[Union[str, Path]], check: bool = True) -> str:
 def files(a: Path) -> Generator[Path, None, None]:
     for root, dirs, files in os.walk(a):
         for f in files:
-            if not f.startswith("."):
-                yield Path(root, f).relative_to(a)
+            if f == ".DS_Store" or (f[0] == "." and f[-4:-1] == ".sw"):
+                continue
+            yield Path(root, f).relative_to(a)
 
 
 def compare(a: Path, b: Path) -> bool:
