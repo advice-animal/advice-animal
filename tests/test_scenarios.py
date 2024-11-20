@@ -15,7 +15,7 @@ SCENARIOS = sorted(SCENARIO_DIR.glob("*.txt"))
 
 LOG_LINE_TIMESTAMP_RE = re.compile(r"^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2},\d{3} ", re.M)
 LOG_LINE_NUMERIC_LINE_RE = re.compile(r"^([A-Z]+\s+[a-z_.]+:)\d+(?= )", re.M)
-GIT_VERSION_RE = re.compile(r"(\d+\.)\d+(?:\.\d+)?(?:\.dev\d+\S+)")
+GIT_VERSION_RE = re.compile(r"(\d+\.)\d+(?:\.\d+)?(?:\.dev\d+\S+)?")
 
 @pytest.mark.parametrize("filename", SCENARIOS)
 def test_scenario(filename, monkeypatch):
