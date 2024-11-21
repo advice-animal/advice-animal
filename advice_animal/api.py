@@ -1,12 +1,12 @@
 from __future__ import annotations
 
 import logging
-
 import os
 from enum import IntEnum
 from pathlib import Path
 from typing import Optional
 
+from click import ClickException
 from pathspec import PathSpec
 from pathspec.patterns.gitwildmatch import GitWildMatchPattern
 from vmodule import VLOG_2
@@ -74,7 +74,7 @@ class Env:
                 dirnames.clear()
 
         if not projects:
-            raise Exception("No python projects found in repo")
+            raise ClickException("No python projects found in repo")
         return projects
 
     def _find_repo_root(self) -> Path:
