@@ -9,6 +9,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Generator, Optional, Sequence, Tuple, Type, Union
 
+from click import ClickException
 from vmodule import VLOG_1
 
 from .api import BaseCheck, Env, FixConfidence, Mode
@@ -70,10 +71,10 @@ class Filter:
 class Runner:
     def __init__(self, advice_path: Path, inplace: bool, mode: Mode) -> None:
         if not advice_path.is_dir():
-            raise ValueError(f"{advice_path} is not a directory")
+            raise ClickException(f"{advice_path} is not a directory")
 
         if inplace and mode != Mode.apply:
-            raise ValueError("inplace only valid with mode 'apply'")
+            raise ClickException("inplace only valid with mode 'apply'")
 
         self.advice_path = advice_path
         self.inplace = inplace
@@ -90,7 +91,7 @@ class Runner:
         else:  # This is a detached HEAD or not a git repo
             current_branch = None
             if not self.inplace:
-                raise ValueError("Not a git repo")
+                raise ClickException("Not a git repo")
         results = {}
         if self.inplace:  # This is only applicable for `apply` command
             cur_cwd = os.getcwd()
@@ -99,7 +100,7 @@ class Runner:
                 try:
                     run_cmd(["git", "diff", "-s", "--exit-code"])
                 except subprocess.CalledProcessError:
-                    raise ValueError(
+                    raise ClickException(
                         "Can't use inplace on a dirty checkout; commit first"
                     ) from None
 
