@@ -2,12 +2,13 @@ from pathlib import Path
 
 import pytest
 from advice_animal.api import Env
+from click import ClickException
 
 
 def test_find_py_projects(tmp_path):
     # Create a folder with .gitignore
     (tmp_path / ".gitignore").write_text("*.pyc\nvar/\n")
-    with pytest.raises(Exception):
+    with pytest.raises(ClickException):
         e = Env(tmp_path)
 
     # Create sub-folders with setup.py and pyproject.toml
