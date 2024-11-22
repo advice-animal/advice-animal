@@ -90,8 +90,7 @@ class Runner:
             current_branch = git_head_path.read_text().strip().split("/")[-1]
         else:  # This is a detached HEAD or not a git repo
             current_branch = None
-            if not self.inplace:
-                raise ClickException("Not a git repo")
+            raise ClickException("Not a git repo")
         results = {}
         if self.inplace:  # This is only applicable for `apply` command
             cur_cwd = os.getcwd()
