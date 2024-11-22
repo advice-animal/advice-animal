@@ -96,11 +96,12 @@ class Runner:
             cur_cwd = os.getcwd()
             try:
                 os.chdir(repo)
-                try:
-                    run_cmd(["git", "diff", "-s", "--exit-code"])
-                except subprocess.CalledProcessError:
+                output, exit_code = run_cmd(
+                    ["git", "diff", "--name-only", "--exit-code"], check=False
+                )
+                if exit_code != 0:
                     raise ClickException(
-                        "Can't use inplace on a dirty checkout; commit first"
+                        f"Uncommited changes found in\n{output}\nPlease commit or stash them."
                     ) from None
 
                 for advice_name, check_cls in self.order_check_classes(filter):
