@@ -281,6 +281,7 @@ def apply(ctx: click.Context, target: str, inplace: bool) -> bool:
         repo=Path(target),
         filter=ctx.obj.filter,
     )
+    final_result = True
     for advice_name, result in results.items():
         if result.success:
             if result.modified:
@@ -293,13 +294,14 @@ def apply(ctx: click.Context, target: str, inplace: bool) -> bool:
                     click.echo(click.style(advice_name, fg="yellow") + ": " + next_step)
             else:
                 click.echo(click.style(advice_name, fg="green") + ": No changes needed")
-            return True
         else:
             click.echo(click.style(advice_name, fg="red") + " failed: " + result.error)
+            final_result = False
     if not results:
         click.echo("No advices matched.")
         show_list(ctx)
-    return False
+        final_result = False
+    return final_result
 
 
 if __name__ == "__main__":

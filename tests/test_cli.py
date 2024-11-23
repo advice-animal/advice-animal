@@ -45,15 +45,15 @@ def test_apply(tmp_path):
     try:
         os.chdir(tmp_path)
         runner = CliRunner()
-        result = runner.invoke(main, ["-a"])
+        result = runner.invoke(main, ["-a", "--preview"])
         assert result.exit_code == 0
-        assert result.output == "shouty: Changes made\n"
+        assert result.output == "shouty: Changes made\npip-tools: No changes needed\n"
     finally:
         os.chdir(cur_dir)
 
 
-def test_no_match():
-    os.environ["ADVICE_DIR"] = "tests/advice"
+def test_no_match(tmp_git):
+    os.environ["ADVICE_DIR"] = str(Path(__file__).parent / "advice")
     runner = CliRunner()
     result = runner.invoke(main, ["non_existent"])
     assert result.exit_code == 1
