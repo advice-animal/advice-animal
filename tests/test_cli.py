@@ -47,3 +47,15 @@ def test_apply(tmp_path):
     result = runner.invoke(main, ["-a"])
     assert result.exit_code == 0
     assert result.output == "shouty: Changes made\n"
+
+
+def test_no_match():
+    os.environ["ADVICE_DIR"] = "tests/advice"
+    runner = CliRunner()
+    result = runner.invoke(main, ["non_existent"])
+    assert "* shouty\n* pip-tools - (preview)\n" in result.output
+    assert result.exit_code == 0
+    assert (
+        "No advices matched.\nAvailable advice:\n* shouty\n* pip-tools - (preview)\n"
+        in result.output
+    )

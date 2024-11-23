@@ -251,8 +251,13 @@ def perform_selftest(ctx: click.Context, show_exception: bool = True) -> None:
 
 def show_list(ctx: click.Context) -> None:
     runner = Runner(Path(ctx.obj.advice_path), inplace=False, mode=Mode.check)
-    print("Available advice:")
-    for advice_name, check_cls in runner.order_check_classes(ctx.obj.filter):
+    click.echo("Available advice:")
+    everything = Filter(
+        preview_filter=True,
+        confidence_filter=FixConfidence.UNSET,
+        name_filter=re.compile(".*"),
+    )
+    for advice_name, check_cls in runner.order_check_classes(filter=everything):
         if check_cls.confidence.name != "UNSET":
             name = click.style(advice_name, fg=check_cls.confidence.name.lower())
         else:
@@ -280,6 +285,9 @@ def apply(ctx: click.Context, target: str, inplace: bool) -> None:
                 click.echo(click.style(advice_name, fg="green") + ": No changes needed")
         else:
             click.echo(click.style(advice_name, fg="red") + " failed: " + result.error)
+    if not results:
+        click.echo("No advices matched.")
+        show_list(ctx)
 
 
 if __name__ == "__main__":
