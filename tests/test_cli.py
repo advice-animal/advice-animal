@@ -41,19 +41,21 @@ def test_apply(tmp_path):
     subprocess.check_call(["git", "add", "-A"], cwd=tmp_path)
     subprocess.check_call(["git", "commit", "-m", "foo"], cwd=tmp_path)
     os.environ["ADVICE_DIR"] = str(Path(__file__).parent / "advice")
-
-    os.chdir(tmp_path)
-    runner = CliRunner()
-    result = runner.invoke(main, ["-a"])
-    assert result.exit_code == 0
-    assert result.output == "shouty: Changes made\n"
+    cur_dir = os.getcwd()
+    try:
+        os.chdir(tmp_path)
+        runner = CliRunner()
+        result = runner.invoke(main, ["-a"])
+        assert result.exit_code == 0
+        assert result.output == "shouty: Changes made\n"
+    finally:
+        os.chdir(cur_dir)
 
 
 def test_no_match():
     os.environ["ADVICE_DIR"] = "tests/advice"
     runner = CliRunner()
     result = runner.invoke(main, ["non_existent"])
-    assert "* shouty\n* pip-tools - (preview)\n" in result.output
     assert result.exit_code == 0
     assert (
         "No advices matched.\nAvailable advice:\n* shouty\n* pip-tools - (preview)\n"
