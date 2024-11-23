@@ -56,7 +56,7 @@ def test_no_match():
     os.environ["ADVICE_DIR"] = "tests/advice"
     runner = CliRunner()
     result = runner.invoke(main, ["non_existent"])
-    assert result.exit_code == 0
+    assert result.exit_code == 1
     assert (
         "No advices matched.\nAvailable advice:\n* shouty\n* pip-tools - (preview)\n"
         in result.output
