@@ -2,3 +2,4 @@
 $ advice-animal
 Available advice:
 * shouty
+* pip-tools - (preview)

@@ -1,3 +1,4 @@
 $ advice-animal --confidence yellow --preview
 Available advice:
+* shouty
 * pip-tools - (preview)
