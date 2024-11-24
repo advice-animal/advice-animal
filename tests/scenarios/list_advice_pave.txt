@@ -1,3 +1,4 @@
 $ advice-animal pave
 Available advice:
 * shouty
+* pip-tools - (preview)

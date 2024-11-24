@@ -176,17 +176,21 @@ def main(
     )
     LOG.info("Using settings %s", ctx.obj)
 
+    success = True
     if selftest:
         perform_selftest(ctx)
     elif config:
-        show_config(ctx)
+        success = show_config(ctx)
     elif advice_names or all:
-        apply(ctx, target, not in_branches)
+        success = apply(ctx, target, not in_branches)
     else:
-        show_list(ctx)
+        success = show_list(ctx)
+
+    if not success:
+        sys.exit(1)
 
 
-def show_config(ctx: click.Context) -> None:
+def show_config(ctx: click.Context) -> bool:
     """
     Prints the path to advice dir that would be used with this set of args.
     """
@@ -199,7 +203,8 @@ def show_config(ctx: click.Context) -> None:
         else:
             return str(obj)
 
-    print(json.dumps(ctx.obj.__dict__, default=default))
+    click.echo(json.dumps(ctx.obj.__dict__, default=default))
+    return True
 
 
 def perform_selftest(ctx: click.Context, show_exception: bool = True) -> None:
@@ -253,33 +258,50 @@ def perform_selftest(ctx: click.Context, show_exception: bool = True) -> None:
     sys.exit(rv)
 
 
-def show_list(ctx: click.Context) -> None:
+def show_list(ctx: click.Context) -> bool:
     runner = Runner(Path(ctx.obj.advice_path), inplace=False, mode=Mode.check)
-    print("Available advice:")
-    for advice_name, check_cls in runner.order_check_classes(ctx.obj.filter):
+    click.echo("Available advice:")
+    everything = Filter(
+        preview_filter=True,
+        confidence_filter=FixConfidence.UNSET,
+        name_filter=re.compile(".*"),
+    )
+    for advice_name, check_cls in runner.order_check_classes(filter=everything):
         if check_cls.confidence.name != "UNSET":
             name = click.style(advice_name, fg=check_cls.confidence.name.lower())
         else:
             name = click.style(advice_name, fg="green")
         click.echo(f"* {name}{' - (preview)' if check_cls.preview else ''}")
+    return True
 
 
-def apply(ctx: click.Context, target: str, inplace: bool) -> None:
+def apply(ctx: click.Context, target: str, inplace: bool) -> bool:
     runner = Runner(Path(ctx.obj.advice_path), inplace=inplace, mode=Mode.apply)
     results = runner.run(
         repo=Path(target),
         filter=ctx.obj.filter,
     )
+    final_result = True
     for advice_name, result in results.items():
         if result.success:
             if result.modified:
-                click.echo(click.style(advice_name, fg="green") + ": " + result.message)
+                click.echo(
+                    click.style(advice_name, fg="green")
+                    + ": "
+                    + (result.message or "Changes made")
+                )
                 for next_step in result.next_steps:
                     click.echo(click.style(advice_name, fg="yellow") + ": " + next_step)
             else:
                 click.echo(click.style(advice_name, fg="green") + ": No changes needed")
         else:
             click.echo(click.style(advice_name, fg="red") + " failed: " + result.error)
+            final_result = False
+    if not results:
+        click.echo("No advices matched.")
+        show_list(ctx)
+        final_result = False
+    return final_result
 
 
 if __name__ == "__main__":
