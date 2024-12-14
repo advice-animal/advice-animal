@@ -139,6 +139,7 @@ class BaseCheck:
     """
 
     confidence: FixConfidence = FixConfidence.UNSET
+    description: Optional[str] = None
     order: int = 50
 
     # Setting either of these requires extra user intent to run, within the confidence band.
