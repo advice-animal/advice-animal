@@ -176,18 +176,20 @@ def main(
     )
     LOG.info("Using settings %s", ctx.obj)
 
-    success = True
+    exit_code = 0
     if selftest:
-        perform_selftest(ctx)
+        exit_code = perform_selftest(ctx)
     elif config:
-        success = show_config(ctx)
+        if not show_config(ctx):
+            exit_code = 1
     elif advice_names or all:
-        success = apply(ctx, target, not in_branches)
+        exit_code = apply(ctx, target, not in_branches)
     else:
-        success = show_list(ctx)
+        if not show_list(ctx):
+            exit_code = 1
 
-    if not success:
-        sys.exit(1)
+    if exit_code != 0:
+        sys.exit(exit_code)
 
 
 def show_config(ctx: click.Context) -> bool:
@@ -207,7 +209,7 @@ def show_config(ctx: click.Context) -> bool:
     return True
 
 
-def perform_selftest(ctx: click.Context, show_exception: bool = True) -> None:
+def perform_selftest(ctx: click.Context, show_exception: bool = True) -> int:
     """
     Runs the a/ -> b/ tests contained in the currently-selected advice repo.
     """
@@ -255,7 +257,7 @@ def perform_selftest(ctx: click.Context, show_exception: bool = True) -> None:
                 rv |= 8
                 if show_exception:
                     LOG.exception(n)
-    sys.exit(rv)
+    return rv
 
 
 def show_list(ctx: click.Context) -> bool:
@@ -280,16 +282,17 @@ def show_list(ctx: click.Context) -> bool:
     return True
 
 
-def apply(ctx: click.Context, target: str, inplace: bool) -> bool:
+def apply(ctx: click.Context, target: str, inplace: bool) -> int:
     runner = Runner(Path(ctx.obj.advice_path), inplace=inplace, mode=Mode.apply)
     results = runner.run(
         repo=Path(target),
         filter=ctx.obj.filter,
     )
-    final_result = True
+    final_result = 0
     for advice_name, result in results.items():
         if result.success:
             if result.modified:
+                final_result != 2
                 click.echo(
                     click.style(advice_name, fg="green")
                     + ": "
@@ -301,11 +304,11 @@ def apply(ctx: click.Context, target: str, inplace: bool) -> bool:
                 click.echo(click.style(advice_name, fg="green") + ": No changes needed")
         else:
             click.echo(click.style(advice_name, fg="red") + " failed: " + result.error)
-            final_result = False
+            final_result != 1
     if not results:
         click.echo("No advices matched.")
         show_list(ctx)
-        final_result = False
+        final_result |= 128
     return final_result
 
 
