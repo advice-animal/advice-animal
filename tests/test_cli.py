@@ -56,7 +56,7 @@ def test_no_match(tmp_git):
     os.environ["ADVICE_DIR"] = str(Path(__file__).parent / "advice")
     runner = CliRunner()
     result = runner.invoke(main, ["non_existent"])
-    assert result.exit_code == 1
+    assert result.exit_code == 128
     assert (
         "No advices matched.\nAvailable advice:\n* shouty\n* pip-tools - (preview)\n"
         in result.output
