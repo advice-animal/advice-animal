@@ -126,9 +126,9 @@ class FixConfidence(IntEnum):
 
 
 class Urgency(IntEnum):
-    NOW = 10
+    LATER = 10
     SOON = 20
-    LATER = 30
+    NOW = 30
 
 
 class Mode(IntEnum):

@@ -12,7 +12,7 @@ from typing import Generator, Optional, Sequence, Tuple, Type, Union
 from click import ClickException
 from vmodule import VLOG_1
 
-from .api import BaseCheck, Env, FixConfidence, Mode
+from .api import BaseCheck, Env, FixConfidence, Urgency, Mode
 
 LOG = logging.getLogger(__name__)
 
@@ -39,12 +39,22 @@ class Result:
 @dataclass
 class Filter:
     confidence_filter: FixConfidence
+    urgency_filter: Urgency
     preview_filter: bool
     name_filter: re.Pattern[str]
 
     def include(self, display_name: str, check: BaseCheck) -> bool:
         if not self.name_filter.fullmatch(display_name):
             LOG.log(VLOG_1, "%s: name does not match, skip", display_name)
+            return False
+        if check.urgency < self.urgency_filter:
+            LOG.log(
+                VLOG_1,
+                "%s: urgency %s < filter %s, skip",
+                display_name,
+                check.urgency,
+                self.urgency_filter,
+            )
             return False
         if check.confidence < self.confidence_filter:
             LOG.log(
