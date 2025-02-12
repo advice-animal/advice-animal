@@ -267,10 +267,16 @@ def show_list(ctx: click.Context) -> bool:
         name_filter=re.compile(".*"),
     )
     for advice_name, check_cls in runner.order_check_classes(filter=everything):
-        description = check_cls.__doc__.strip().split('\n')[0] if check_cls.__doc__ else None
+        description = (
+            check_cls.__doc__.strip().split("\n")[0] if check_cls.__doc__ else None
+        )
         if check_cls.confidence.name != "UNSET":
             name = click.style(advice_name, fg=check_cls.confidence.name.lower())
-            description = click.style(description, fg=check_cls.confidence.name.lower()) if description else None
+            description = (
+                click.style(description, fg=check_cls.confidence.name.lower())
+                if description
+                else None
+            )
         else:
             name = click.style(advice_name, fg="green")
             description = click.style(description, fg="green") if description else None
