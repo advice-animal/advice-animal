@@ -14,7 +14,7 @@ from typing import Any, Optional
 import click
 from vmodule import vmodule_init
 
-from .api import Env, FixConfidence, Mode
+from .api import Env, FixConfidence, Mode, Urgency
 from .naming import advice_name_re
 
 from .runner import Filter, Runner
@@ -98,6 +98,9 @@ case.  (Click's API prevents showing the actual live url here, but check --confi
 @click.option(
     "--confidence", default="unset", help="Filter advice to be at least this confident"
 )
+@click.option(
+    "--urgency", default="later", help="Filter advice to be at least this urgent"
+)
 @click.option("--preview", is_flag=True, help="Allow preview advice")
 @click.option("-a", "--all", is_flag=True, help="Use all advice")
 @click.argument("advice_names", nargs=-1)
@@ -122,6 +125,7 @@ def main(
     freeze: bool,
     # Choice of advice
     confidence: str,
+    urgency: str,
     preview: bool,
     dry_run: bool,
     target: str,
@@ -169,6 +173,7 @@ def main(
         advice_path=advice_path,
         filter=Filter(
             confidence_filter=FixConfidence[confidence.upper()],
+            urgency_filter=Urgency[urgency.upper()],
             preview_filter=preview,
             name_filter=re.compile(only),
         ),
@@ -220,6 +225,7 @@ def perform_selftest(ctx: click.Context, show_exception: bool = True) -> None:
         Filter(
             preview_filter=True,
             confidence_filter=FixConfidence.UNSET,
+            urgency_filter=Urgency.LATER,
             name_filter=re.compile(".*"),
         )
     ):
@@ -258,31 +264,64 @@ def perform_selftest(ctx: click.Context, show_exception: bool = True) -> None:
     sys.exit(rv)
 
 
+def click_tabular(
+    widths: tuple[int | None, ...], values: tuple[str | tuple[str, str], ...]
+) -> str:
+    buf = ""
+    for w, value in zip(widths, values):
+        if buf:
+            buf += " "
+        if isinstance(value, tuple):
+            value, fg = value
+        else:
+            fg = None
+        if w:
+            value = value.ljust(w)
+        buf += click.style(value, fg=fg)
+    return buf
+
+
 def show_list(ctx: click.Context) -> bool:
     runner = Runner(Path(ctx.obj.advice_path), inplace=False, mode=Mode.check)
     click.echo("Available advice:")
+    click.echo()
     everything = Filter(
         preview_filter=True,
         confidence_filter=FixConfidence.UNSET,
+        urgency_filter=Urgency.LATER,
         name_filter=re.compile(".*"),
     )
+    color_map = {
+        "GREEN": "green",
+        "YELLOW": "yellow",
+        "RED": "red",
+        "UNSET": "bright_white",
+    }
+    widths = (8, 7, None)
+    click.echo("  " + click_tabular(widths, ("Urgency", "Effort", "Advice Name")))
     for advice_name, check_cls in runner.order_check_classes(filter=everything):
         description = (
             check_cls.__doc__.strip().split("\n")[0] if check_cls.__doc__ else None
         )
-        if check_cls.confidence.name != "UNSET":
-            name = click.style(advice_name, fg=check_cls.confidence.name.lower())
-            description = (
-                click.style(description, fg=check_cls.confidence.name.lower())
-                if description
-                else None
+        conf = click.style(
+            check_cls.confidence.name.lower(), fg=color_map[check_cls.confidence.name]
+        )
+        urgency = check_cls.urgency.name
+        if check_cls.preview:
+            urgency += "/prv"
+        click.echo(
+            "  "
+            + click_tabular(
+                widths,
+                (
+                    urgency,
+                    str(check_cls.minutes_effort / 60.0) + "h",
+                    f"{advice_name} ({conf})",
+                ),
             )
-        else:
-            name = click.style(advice_name, fg="green")
-            description = click.style(description, fg="green") if description else None
-        click.echo(f"* {name}{' - (preview)' if check_cls.preview else ''}")
+        )
         if description:
-            click.echo(f"   - {description}")
+            click.echo(f"   {description}")
     return True
 
 

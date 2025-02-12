@@ -1,4 +1,6 @@
 $ advice-animal --confidence yellow --preview
 Available advice:
-* shouty
-* pip-tools - (preview)
+
+  Urgency  Effort  Advice Name
+  NOW      1.0h    shouty (unset)
+  NOW/prv  1.0h    pip-tools (yellow)

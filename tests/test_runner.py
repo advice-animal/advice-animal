@@ -3,7 +3,7 @@ import subprocess
 from pathlib import Path
 
 import pytest
-from advice_animal.runner import Filter, FixConfidence, Mode, Runner
+from advice_animal.runner import Filter, FixConfidence, Mode, Runner, Urgency
 from click import ClickException
 
 
@@ -19,7 +19,10 @@ def test_inplace(tmp_git):
         results = r.run(
             tmp_git,
             Filter(
-                FixConfidence.UNSET, preview_filter=False, name_filter=re.compile(r".*")
+                confidence_filter=FixConfidence.UNSET,
+                urgency_filter=Urgency.LATER,
+                preview_filter=False,
+                name_filter=re.compile(r".*"),
             ),
         )
         print(results)
@@ -29,7 +32,10 @@ def test_inplace(tmp_git):
     results = r.run(
         tmp_git,
         Filter(
-            FixConfidence.UNSET, preview_filter=False, name_filter=re.compile(r".*")
+            FixConfidence.UNSET,
+            preview_filter=False,
+            name_filter=re.compile(r".*"),
+            urgency_filter=Urgency.LATER,
         ),
     )
 
@@ -52,7 +58,10 @@ def test_git(tmp_path):
     results = r.run(
         tmp_path,
         Filter(
-            FixConfidence.UNSET, preview_filter=False, name_filter=re.compile(r".*")
+            FixConfidence.UNSET,
+            preview_filter=False,
+            name_filter=re.compile(r".*"),
+            urgency_filter=Urgency.LATER,
         ),
     )
     assert results["shouty"].success

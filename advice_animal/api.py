@@ -125,6 +125,12 @@ class FixConfidence(IntEnum):
     GREEN = 30
 
 
+class Urgency(IntEnum):
+    LATER = 10
+    SOON = 20
+    NOW = 30
+
+
 class Mode(IntEnum):
     check = 10
     diff = 20
@@ -140,6 +146,8 @@ class BaseCheck:
 
     confidence: FixConfidence = FixConfidence.UNSET
     order: int = 50
+    minutes_effort: int = 60
+    urgency: Urgency = Urgency.NOW
 
     # Setting either of these requires extra user intent to run, within the confidence band.
     manual: bool = False
