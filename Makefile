@@ -30,12 +30,12 @@ test:
 
 .PHONY: format
 format:
-	ruff format
-	ruff check --fix
+	ruff format .
+	ruff check --fix .
 
 .PHONY: lint
 lint:
-	ruff check $(SOURCES)
+	ruff check .
 	python -m checkdeps --allow-names advice_animal advice_animal
 	mypy --strict --install-types --non-interactive advice_animal
 
