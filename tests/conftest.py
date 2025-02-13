@@ -1,9 +1,9 @@
 import subprocess
 import pytest
 
+
 @pytest.fixture()
 def tmp_git(tmp_path, monkeypatch):
-
     monkeypatch.chdir(tmp_path)
 
     subprocess.run(["git", "init"])
