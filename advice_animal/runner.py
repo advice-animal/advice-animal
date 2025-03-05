@@ -84,13 +84,15 @@ class Runner:
         self,
         repo: Path,
         filter: Filter,
+        force: bool = False,
     ) -> dict[str, Result]:
         git_head_path = repo / ".git" / "HEAD"
         if git_head_path.exists():
             current_branch = git_head_path.read_text().strip().split("/")[-1]
         else:  # This is a detached HEAD or not a git repo
             current_branch = None
-            raise ClickException("Not a git repo")
+            if not force:
+                raise ClickException("Not a git repo")
         results = {}
         if self.inplace:  # This is only applicable for `apply` command
             cur_cwd = os.getcwd()
@@ -100,9 +102,14 @@ class Runner:
                     ["git", "diff", "--name-only", "--exit-code"], check=False
                 )
                 if exit_code != 0:
-                    raise ClickException(
-                        f"Uncommited changes found in\n{output}\nPlease commit or stash them."
-                    ) from None
+                    if force:
+                        LOG.warning(
+                            "Uncommitted changes/non-git found, but --force specified"
+                        )
+                    else:
+                        raise ClickException(
+                            f"Uncommited changes found in\n{output}\nPlease commit or stash them."
+                        ) from None
 
                 for advice_name, check_cls in self.order_check_classes(filter):
                     LOG.log(VLOG_1, "Running check %s", advice_name)

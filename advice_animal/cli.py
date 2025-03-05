@@ -38,6 +38,7 @@ class Settings:
     advice_path: Path
     filter: Filter
     dry_run: bool
+    force: bool = False
 
 
 def version_callback(ctx: click.Context, param: click.Parameter, value: bool) -> None:
@@ -107,6 +108,7 @@ case.  (Click's API prevents showing the actual live url here, but check --confi
 @click.option(
     "--in-branches", is_flag=True, help="In independent branches instead of inplace"
 )
+@click.option("-f", "--force", is_flag=True, help="Bypass safety")
 # Special non-fixing modes
 @click.option("--selftest", is_flag=True, help="Check viability of advice repo")
 @click.option("--config", is_flag=True, help="Show configuration")
@@ -126,6 +128,7 @@ def main(
     dry_run: bool,
     target: str,
     in_branches: bool,
+    force: bool,
     all: bool,
     advice_names: list[str],
     # Operation
@@ -173,6 +176,7 @@ def main(
             name_filter=re.compile(only),
         ),
         dry_run=dry_run,
+        force=force,
     )
     LOG.info("Using settings %s", ctx.obj)
 
@@ -267,10 +271,16 @@ def show_list(ctx: click.Context) -> bool:
         name_filter=re.compile(".*"),
     )
     for advice_name, check_cls in runner.order_check_classes(filter=everything):
-        description = check_cls.__doc__.strip().split('\n')[0] if check_cls.__doc__ else None
+        description = (
+            check_cls.__doc__.strip().split("\n")[0] if check_cls.__doc__ else None
+        )
         if check_cls.confidence.name != "UNSET":
             name = click.style(advice_name, fg=check_cls.confidence.name.lower())
-            description = click.style(description, fg=check_cls.confidence.name.lower()) if description else None
+            description = (
+                click.style(description, fg=check_cls.confidence.name.lower())
+                if description
+                else None
+            )
         else:
             name = click.style(advice_name, fg="green")
             description = click.style(description, fg="green") if description else None
@@ -285,6 +295,7 @@ def apply(ctx: click.Context, target: str, inplace: bool) -> bool:
     results = runner.run(
         repo=Path(target),
         filter=ctx.obj.filter,
+        force=ctx.obj.force,
     )
     final_result = True
     for advice_name, result in results.items():
