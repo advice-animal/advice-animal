@@ -17,11 +17,15 @@ from .api import BaseCheck, Env, FixConfidence, Mode
 LOG = logging.getLogger(__name__)
 
 
-def run_cmd(cmd: list[Union[str, Path]], check: bool = True) -> Tuple[str, int]:
+def run_cmd(
+    cmd: list[Union[str, Path]], check: bool = True, include_stderr: bool = False
+) -> Tuple[str, int]:
     LOG.info("Run %s in %s", cmd, os.getcwd())
     proc = subprocess.run(cmd, encoding="utf-8", capture_output=True, check=check)
     LOG.debug("Ran %s -> %s", cmd, proc.returncode)
     LOG.debug("Stdout: %s", proc.stdout)
+    if include_stderr:
+        return proc.stdout + proc.stderr, proc.returncode
     return proc.stdout, proc.returncode
 
 
@@ -97,11 +101,19 @@ class Runner:
             try:
                 os.chdir(repo)
                 output, exit_code = run_cmd(
-                    ["git", "diff", "--name-only", "--exit-code"], check=False
+                    ["git", "diff", "--name-only", "--exit-code"],
+                    check=False,
+                    include_stderr=True,
                 )
+
+                if exit_code == 1:
+                    raise ClickException(
+                        f"Uncommitted changes found in\n{output}\nPlease commit or stash them."
+                    ) from None
+
                 if exit_code != 0:
                     raise ClickException(
-                        f"Uncommited changes found in\n{output}\nPlease commit or stash them."
+                        f"Failed to run 'git diff --name-only --exit-code' for repo:\n{output}"
                     ) from None
 
                 for advice_name, check_cls in self.order_check_classes(filter):
