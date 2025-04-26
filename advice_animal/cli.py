@@ -37,7 +37,6 @@ class Settings:
     advice_url: Optional[str]  # only set if used
     advice_path: Path
     filter: Filter
-    dry_run: bool
 
 
 def version_callback(ctx: click.Context, param: click.Parameter, value: bool) -> None:
@@ -102,7 +101,6 @@ case.  (Click's API prevents showing the actual live url here, but check --confi
 @click.option("-a", "--all", is_flag=True, help="Use all advice")
 @click.argument("advice_names", nargs=-1)
 # Modifying how fixing happens
-@click.option("-n", "--dry-run", is_flag=True)
 @click.option("--target", default=".", help="Path to check, defaulting to current dir")
 @click.option(
     "--in-branches", is_flag=True, help="In independent branches instead of inplace"
@@ -123,7 +121,6 @@ def main(
     # Choice of advice
     confidence: str,
     preview: bool,
-    dry_run: bool,
     target: str,
     in_branches: bool,
     all: bool,
@@ -172,7 +169,6 @@ def main(
             preview_filter=preview,
             name_filter=re.compile(only),
         ),
-        dry_run=dry_run,
     )
     LOG.info("Using settings %s", ctx.obj)
 
