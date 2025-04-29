@@ -18,9 +18,7 @@ LOG_LINE_NUMERIC_LINE_RE = re.compile(r"^([A-Z]+\s+[a-z_.]+:)\d+(?= )", re.M)
 GIT_VERSION_RE = re.compile(r"(\d+\.)\d+(?:\.\d+)?(?:\.dev\d+\S+)?")
 
 @pytest.mark.parametrize("filename", SCENARIOS)
-def test_scenario(filename, monkeypatch):
-    monkeypatch.setenv("ADVICE_DIR", str(Path(__file__).parent / "advice"))
-
+def test_scenario(filename):
     path = SCENARIO_DIR / filename
     runner = CliRunner()
     command, output = load_scenario(path)

@@ -25,7 +25,6 @@ def test_check(tmp_git):
 
 
 def test_list():
-    os.environ["ADVICE_DIR"] = "tests/advice"
     runner = CliRunner()
     result = runner.invoke(main, ["--preview"])
     assert "* shouty\n* pip-tools - (preview)\n" in result.output
@@ -40,7 +39,6 @@ def test_apply(tmp_path):
     )
     subprocess.check_call(["git", "add", "-A"], cwd=tmp_path)
     subprocess.check_call(["git", "commit", "-m", "foo"], cwd=tmp_path)
-    os.environ["ADVICE_DIR"] = str(Path(__file__).parent / "advice")
     cur_dir = os.getcwd()
     try:
         os.chdir(tmp_path)
@@ -53,7 +51,6 @@ def test_apply(tmp_path):
 
 
 def test_no_match(tmp_git):
-    os.environ["ADVICE_DIR"] = str(Path(__file__).parent / "advice")
     runner = CliRunner()
     result = runner.invoke(main, ["non_existent"])
     assert result.exit_code == 1
