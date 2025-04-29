@@ -1,6 +1,7 @@
 import os
 import subprocess
 from pathlib import Path
+from textwrap import dedent
 
 from advice_animal.cli import main
 
@@ -15,6 +16,28 @@ def test_self_test():
     result = invoke(main, ["--selftest"])
     assert result.exit_code == 0
 
+def test_bad_self_test(monkeypatch):
+    monkeypatch.setenv("ADVICE_DIR", str(Path(__file__).parent / "bad_advice"))
+    result = invoke(main, ["--selftest"])
+    assert result.exit_code == 1
+    assert result.output == dedent("""\
+        --- a/new_file.txt
+        +++ b/new_file.txt
+        @@ -1 +0,0 @@
+        -This is the file that doesn't get created.
+        didnt_make_file          NOT DONE
+        --- a/extra_file.txt
+        +++ b/extra_file.txt
+        @@ -0,0 +1 @@
+        +I shouldn't be here
+        made_extra_file          NOT DONE
+        --- a/README.txt
+        +++ b/README.txt
+        @@ -1 +1 @@
+        -Hi there.
+        +Wrong
+        wrong_contents           NOT DONE
+        """)
 
 def test_check(tmp_git):
     result = invoke(main, ["-a"])
