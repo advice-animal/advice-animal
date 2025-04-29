@@ -28,10 +28,27 @@ def files(a: Path) -> Generator[Path, None, None]:
 def compare(a: Path, b: Path) -> bool:
     # TODO recursive?
     rv = False
-    for entry in files(a):
+    a_files = set(files(a))
+    b_files = set(files(b))
+
+    for entry in (a_files & b_files):
         a_text = Path(a, entry).read_text()
         b_text = Path(b, entry).read_text()
         if a_text != b_text:
             rv = True
         moreorless.click.echo_color_unified_diff(a_text, b_text, entry.name)
+
+    for entry in (a_files - b_files):
+        a_text = Path(a, entry).read_text()
+        rv = True
+        moreorless.click.echo_color_unified_diff(a_text, "", entry.name)
+    for entry in (b_files - a_files):
+        b_text = Path(b, entry).read_text()
+        if entry.name == "pyproject.toml" and len(b_text) == 0:
+            # We create empty pyproject.toml files to make test directories
+            # look like real projects. We don't want to show this as a diff.
+            continue
+        rv = True
+        moreorless.click.echo_color_unified_diff("", b_text, entry.name)
+
     return rv
