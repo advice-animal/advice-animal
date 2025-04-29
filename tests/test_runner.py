@@ -22,7 +22,6 @@ def test_inplace(tmp_git):
                 FixConfidence.UNSET, preview_filter=False, name_filter=re.compile(r".*")
             ),
         )
-        print(results)
 
     subprocess.check_call(["git", "commit", "-a", "-m", "foo"])
 

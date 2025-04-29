@@ -35,7 +35,7 @@ def test_scenario(filename):
     )
 
     if os.getenv("UPDATE_SCENARIOS"):
-        save_scenario(path, cleaned_output)
+        save_scenario(path, cleaned_output) # pragma: no cover
     else:
         assert output == cleaned_output
 
@@ -53,7 +53,8 @@ def load_scenario(path: Path) -> Tuple[Tuple[str, ...], str]:
                 assert parts[0] == "advice-animal"
                 command = tuple(parts[1:])
                 state = 1
-            elif state == 1:
+            else:
+                assert state == 1
                 output += line
 
     assert state == 1
@@ -61,7 +62,7 @@ def load_scenario(path: Path) -> Tuple[Tuple[str, ...], str]:
     return (command, output)
 
 
-def save_scenario(path: Path, new_output: str) -> None:
+def save_scenario(path: Path, new_output: str) -> None: # pragma: no cover
     state = 0
     buf = ""
     with open(path) as f:

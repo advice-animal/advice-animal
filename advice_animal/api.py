@@ -74,7 +74,7 @@ class Env:
                 dirnames.clear()
 
         if not projects:
-            raise ClickException("No python projects found in repo")
+            raise ClickException(f"No python projects found in repo: {self.repo_root}")
         return projects
 
     def _find_repo_root(self) -> Path:
